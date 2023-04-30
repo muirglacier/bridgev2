@@ -13,166 +13,171 @@ import { useTransferSupportedChainList } from "../hooks/transferSupportedInfoLis
 import ringBell from "../images/ringBell.svg";
 import { isNonEVMChain } from "../providers/NonEVMContextProvider";
 
-const useStyles = createUseStyles<string, { isMobile: boolean }, Theme>((theme: Theme) => ({
-  chainModal: {
-    width: "100%",
-    minWidth: props => (props.isMobile ? "100%" : 624),
-    background: theme.secondBackground,
-    border: props => (props.isMobile ? 0 : `1px solid ${theme.selectChainBorder}`),
-    "& .ant-modal-content": {
+const useStyles = createUseStyles<string, { isMobile: boolean }, Theme>(
+  (theme: Theme) => ({
+    chainModal: {
+      width: "100%",
+      minWidth: (props) => (props.isMobile ? "100%" : 624),
       background: theme.secondBackground,
-      boxShadow: props => (props.isMobile ? "none" : ""),
+      border: (props) =>
+        props.isMobile ? 0 : `1px solid ${theme.selectChainBorder}`,
+      "& .ant-modal-content": {
+        background: theme.secondBackground,
+        boxShadow: (props) => (props.isMobile ? "none" : ""),
+      },
+      "& .ant-modal-body": {
+        padding: "0 !important",
+      },
+      "& .ant-modal": {
+        background: theme.secondBackground,
+      },
+      "& .ant-modal-header": {
+        background: `${theme.secondBackground} !important`,
+      },
     },
-    "& .ant-modal-body": {
-      padding: "0 !important",
+    chainModalWrap: {
+      zIndex: 1001,
     },
-    "& .ant-modal": {
+    card: {
       background: theme.secondBackground,
-    },
-    "& .ant-modal-header": {
-      background: `${theme.secondBackground} !important`,
-    },
-  },
-  chainModalWrap: {
-    zIndex: 1001,
-  },
-  card: {
-    background: theme.secondBackground,
-    width: "100%",
-    paddingBottom: 15,
-    "@global": {
-      ".ant-list-item": {
-        padding: "10px 12px",
+      width: "100%",
+      paddingBottom: 15,
+      "@global": {
+        ".ant-list-item": {
+          padding: "10px 12px",
+        },
+        ".ant-list-item-meta-title": {
+          fontSize: 16,
+          marginBottom: 0,
+        },
+        ".ant-list-item-meta-description": {
+          fontSize: 12,
+        },
       },
-      ".ant-list-item-meta-title": {
-        fontSize: 16,
-        marginBottom: 0,
+      "&.ant-card": {
+        height: "100%",
       },
-      ".ant-list-item-meta-description": {
-        fontSize: 12,
+      "& .ant-card-body": {
+        padding: 0,
+        overflow: "hidden",
+      },
+
+      "& .ant-list-item": {
+        border: `1px solid ${theme.primaryBorder} `,
+        borderWidth: "1px !important",
+      },
+      "& .ant-list-split .ant-list-item:last-child": {
+        border: `1px solid ${theme.primaryBorder} `,
+      },
+
+      "& .ant-list-item-meta": {
+        alignItems: "center",
+      },
+      "& .ant-card-head-title": {
+        padding: "24px 0",
       },
     },
-    "&.ant-card": {
-      height: "100%",
-    },
-    "& .ant-card-body": {
-      padding: 0,
+    item: {
+      cursor: "pointer",
       overflow: "hidden",
+      borderRadius: 16,
+      background: theme.chainBg,
+      "&:hover": {
+        background: theme.primaryBorder,
+        transition: "ease 0.2s",
+      },
     },
-
-    "& .ant-list-item": {
-      border: `1px solid ${theme.primaryBorder} `,
-      borderWidth: "1px !important",
-    },
-    "& .ant-list-split .ant-list-item:last-child": {
-      border: `1px solid ${theme.primaryBorder} `,
-    },
-
-    "& .ant-list-item-meta": {
-      alignItems: "center",
-    },
-    "& .ant-card-head-title": {
-      padding: "24px 0",
-    },
-  },
-  item: {
-    cursor: "pointer",
-    overflow: "hidden",
-    borderRadius: 16,
-    background: theme.chainBg,
-    "&:hover": {
-      background: theme.primaryBorder,
+    activeItem: {
+      composes: ["item"],
+      background: theme.chainBg,
+      border: `1px solid ${theme.primaryBrand} !important`,
       transition: "ease 0.2s",
+      borderRadius: 16,
+      "& div": {
+        color: theme.surfacePrimary,
+      },
     },
-  },
-  activeItem: {
-    composes: ["item"],
-    background: theme.chainBg,
-    border: `1px solid ${theme.primaryBrand} !important`,
-    transition: "ease 0.2s",
-    borderRadius: 16,
-    "& div": {
-      color: theme.surfacePrimary,
-    },
-  },
-  litem: {
-    width: "100%",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "10px 0",
-    color: theme.secondBrand,
-  },
-  itemLeft: {
-    display: "flex",
-    alignItems: "center",
-  },
-  tokenName: {
-    fontSize: 16,
-    color: theme.secondBrand,
-  },
-  tokenSymbol: {
-    fontSize: 12,
-    color: theme.secondBrand,
-  },
-  itemRight: {
-    display: "flex",
-    alignItems: "center",
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: "50%",
-    background: theme.infoSuccess,
-  },
-  text: {
-    color: "#00D395",
-    fontSize: 16,
-    marginLeft: 7,
-  },
-  search: {
-    margin: 16,
-    "& .ant-input": {
-      fontSize: 14,
-      background: theme.secondBackground,
+    litem: {
+      width: "100%",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "10px 0",
       color: theme.secondBrand,
     },
-    "& .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover": {
-      borderColor: "#1890ff",
+    itemLeft: {
+      display: "flex",
+      alignItems: "center",
     },
-    "& .ant-input-affix-wrapper:focus, .ant-input-affix-wrapper-focused": {
-      borderColor: "#1890ff",
+    tokenName: {
+      fontSize: 16,
+      color: theme.secondBrand,
     },
-    "& .ant-input-clear-icon": {
-      color: "#8F9BB3 !important",
+    tokenSymbol: {
+      fontSize: 12,
+      color: theme.secondBrand,
     },
-  },
-  searchinput: {
-    width: "100%",
-    height: 48,
-    borderRadius: 100,
-    border: "1px solid #4e4c4c",
-    background: theme.secondBackground,
-  },
-  moreOptionNote: {
-    margin: 16,
-    minHeight: 56,
-    borderRadius: 16,
-    padding: "8px, 12px, 8px, 12px",
-    background: theme.chainBg,
-    boxShadow: "0px 6px 12px -6px rgba(24, 39, 75, 0.12), 0px 8px 24px -4px rgba(24, 39, 75, 0.08)",
-    display: "flex",
-    alignItems: "center",
-  },
-  moreOptionIcon: {
-    margin: 17,
-  },
-  content: {
-    maxHeight: 485,
-    overflowY: "auto",
-    padding: "0 16px",
-  },
-}));
+    itemRight: {
+      display: "flex",
+      alignItems: "center",
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      background: theme.infoSuccess,
+    },
+    text: {
+      color: "#00D395",
+      fontSize: 16,
+      marginLeft: 7,
+    },
+    search: {
+      margin: 16,
+      "& .ant-input": {
+        fontSize: 14,
+        background: theme.secondBackground,
+        color: theme.secondBrand,
+      },
+      "& .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover":
+        {
+          borderColor: "#1890ff",
+        },
+      "& .ant-input-affix-wrapper:focus, .ant-input-affix-wrapper-focused": {
+        borderColor: "#1890ff",
+      },
+      "& .ant-input-clear-icon": {
+        color: "#8F9BB3 !important",
+      },
+    },
+    searchinput: {
+      width: "100%",
+      height: 48,
+      borderRadius: 100,
+      border: "1px solid #4e4c4c",
+      background: theme.secondBackground,
+    },
+    moreOptionNote: {
+      margin: 16,
+      minHeight: 56,
+      borderRadius: 16,
+      padding: "8px, 12px, 8px, 12px",
+      background: theme.chainBg,
+      boxShadow:
+        "0px 6px 12px -6px rgba(24, 39, 75, 0.12), 0px 8px 24px -4px rgba(24, 39, 75, 0.08)",
+      display: "flex",
+      alignItems: "center",
+    },
+    moreOptionIcon: {
+      margin: 17,
+    },
+    content: {
+      maxHeight: 485,
+      overflowY: "auto",
+      padding: "0 16px",
+    },
+  })
+);
 
 interface IProps {
   visible: boolean;
@@ -181,24 +186,28 @@ interface IProps {
 }
 
 const ChainList: FC<IProps> = ({ visible, onSelectChain, onCancel }) => {
-  const { isMobile } = useAppSelector(state => state.windowWidth);
+  const { isMobile } = useAppSelector((state) => state.windowWidth);
   const classes = useStyles({ isMobile });
   const { chainId } = useWeb3Context();
-  const { transferInfo } = useAppSelector(state => state);
+  const { transferInfo } = useAppSelector((state) => state);
   const { chainSource, transferConfig, fromChain, toChain, selectedToken } =
     transferInfo;
   const { chains, chain_token } = transferConfig;
 
   /// SingleChain Not Supported
-  const transferSupportedChainList = useTransferSupportedChainList(chainSource === "to");
+  const transferSupportedChainList = useTransferSupportedChainList(
+    chainSource === "to"
+  );
 
   // split normalChain and other chain
   const sortChainList = (chainList: Chain[]) => {
     const normalChainList: Chain[] = [];
     const otherChainList: Chain[] = [];
 
-    chainList.forEach(chain => {
-      if (sortedChainNames.find(chainName => chain.name.includes(chainName))) {
+    chainList.forEach((chain) => {
+      if (
+        sortedChainNames.find((chainName) => chain.name.includes(chainName))
+      ) {
         normalChainList.push(chain);
       } else {
         otherChainList.push(chain);
@@ -207,8 +216,10 @@ const ChainList: FC<IProps> = ({ visible, onSelectChain, onCancel }) => {
 
     // sort normal chain
     const sortedNormalChainList: Chain[] = [];
-    sortedChainNames.forEach(chainName => {
-      const targetNormalChain = normalChainList.find(chain => chain.name.includes(chainName));
+    sortedChainNames.forEach((chainName) => {
+      const targetNormalChain = normalChainList.find((chain) =>
+        chain.name.includes(chainName)
+      );
       if (targetNormalChain) {
         sortedNormalChainList.push(targetNormalChain);
       }
@@ -224,11 +235,13 @@ const ChainList: FC<IProps> = ({ visible, onSelectChain, onCancel }) => {
       }
       return 0;
     });
-    const result = sortedNormalChainList.concat(sortedOtherChainList) as Array<Chain>;
+    const result = sortedNormalChainList.concat(
+      sortedOtherChainList
+    ) as Array<Chain>;
     return result;
   };
 
-  const setChainAddrWithSort = oldChains => {
+  const setChainAddrWithSort = (oldChains) => {
     setChainArr(sortChainList(oldChains));
   };
 
@@ -267,7 +280,9 @@ const ChainList: FC<IProps> = ({ visible, onSelectChain, onCancel }) => {
         chainModalId = toChain?.id;
         break;
       case "wallet":
-        chainModalId = isNonEVMChain(fromChain?.id ?? 0) ? fromChain?.id : chainId;
+        chainModalId = isNonEVMChain(fromChain?.id ?? 0)
+          ? fromChain?.id
+          : chainId;
         break;
       default:
         break;
@@ -275,10 +290,10 @@ const ChainList: FC<IProps> = ({ visible, onSelectChain, onCancel }) => {
     return chainModalId;
   };
 
-  const onInputChange = e => {
+  const onInputChange = (e) => {
     setSearchText(e.target.value?.toLowerCase());
   };
-  const onEnter = e => {
+  const onEnter = (e) => {
     setSearchText(e.target.value?.toLowerCase());
   };
 
@@ -287,10 +302,10 @@ const ChainList: FC<IProps> = ({ visible, onSelectChain, onCancel }) => {
     if (chainSource === "SingleChain") {
       return;
     }
-    const localChainIdWhiteList = CHAIN_LIST.map(networkInfo => {
+    const localChainIdWhiteList = CHAIN_LIST.map((networkInfo) => {
       return networkInfo.chainId;
     });
-    const list = transferSupportedChainList.filter(chain => {
+    const list = transferSupportedChainList.filter((chain) => {
       return (
         (chain.name.toLocaleLowerCase().indexOf(searchText) > -1 ||
           chain.id.toString().toLowerCase().indexOf(searchText) > -1) &&
@@ -303,7 +318,9 @@ const ChainList: FC<IProps> = ({ visible, onSelectChain, onCancel }) => {
   const renderTokenItem = (chain: Chain) => {
     return (
       <List.Item
-        className={getChainId() === chain.id ? classes.activeItem : classes.item}
+        className={
+          getChainId() === chain.id ? classes.activeItem : classes.item
+        }
         onClick={() => onSelectChain(chain.id)}
       >
         <div className={classes.litem}>
@@ -346,10 +363,22 @@ const ChainList: FC<IProps> = ({ visible, onSelectChain, onCancel }) => {
           />
         </div>
         <div className={classes.moreOptionNote} hidden={chainSource !== "to"}>
-          <img src={ringBell} className={classes.moreOptionIcon} alt="moreOptionIcon" />
-          <span style={{ color: "#8F9BB3", fontSize: 14, paddingLeft: 4, paddingRight: 4 }}>
-            Below shows the destination chains that enables at least one token transfer from {fromChain?.name}. More
-            chains can be found if you select other source chains.{" "}
+          <img
+            src={ringBell}
+            className={classes.moreOptionIcon}
+            alt="moreOptionIcon"
+          />
+          <span
+            style={{
+              color: "#8F9BB3",
+              fontSize: 14,
+              paddingLeft: 4,
+              paddingRight: 4,
+            }}
+          >
+            Below shows the destination chains that enables at least one token
+            transfer from {fromChain?.name}. More chains can be found if you
+            select other source chains.{" "}
           </span>
         </div>
         <div className={classes.content}>

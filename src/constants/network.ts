@@ -40,10 +40,17 @@ switch (type) {
     break;
 }
 export const NETWORKS = newNetworks;
-export const CHAIN_LIST: NetworkInfo[] = Object.values(NETWORKS) as NetworkInfo[];
-export const getNetworkById: (chainId: number) => NetworkInfo = (chainId: number) => {
+export const CHAIN_LIST: NetworkInfo[] = Object.values(
+  NETWORKS
+) as NetworkInfo[];
+export const getNetworkById: (chainId: number) => NetworkInfo = (
+  chainId: number
+) => {
   for (let i = 0; i < CHAIN_LIST.length; i++) {
-    if (CHAIN_LIST[i]?.chainId === chainId || CHAIN_LIST[i].chainId === Number(chainId)) {
+    if (
+      CHAIN_LIST[i]?.chainId === chainId ||
+      CHAIN_LIST[i].chainId === Number(chainId)
+    ) {
       return CHAIN_LIST[i];
     }
   }

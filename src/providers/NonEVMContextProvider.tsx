@@ -1,6 +1,19 @@
 import * as fcl from "@onflow/fcl";
-import { useWallet, WalletStatus, ConnectType, useConnectedWallet } from "@terra-money/wallet-provider";
-import { createContext, ReactChild, ReactChildren, useCallback, useContext, useEffect, useState } from "react";
+import {
+  useWallet,
+  WalletStatus,
+  ConnectType,
+  useConnectedWallet,
+} from "@terra-money/wallet-provider";
+import {
+  createContext,
+  ReactChild,
+  ReactChildren,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { convertTerraToCanonicalAddress } from "../redux/NonEVMAPIs/terraAPIs";
 import { useAppDispatch, useAppSelector } from "../redux/store";
 import { setFromChain } from "../redux/transferSlice";
@@ -12,6 +25,7 @@ export enum NonEVMMode {
   flowMainnet,
   terraTest,
   terraMainnet,
+  defichainMainnet,
 }
 
 interface NonEVMContextProps {
@@ -25,6 +39,8 @@ interface NonEVMContextProps {
   terraConnected: boolean;
   terraStationInstalled: boolean;
   terraAddress: string;
+  defichainAddress: string;
+  defichainConnected: boolean;
   loadNonEVMModal: (mode: NonEVMMode) => Promise<void>;
   logoutNonEVMModal: () => Promise<void>;
   setFlowInToChain: () => void;
@@ -40,6 +56,8 @@ export const NonEVMContext = createContext<NonEVMContextProps>({
   terraConnected: false,
   terraStationInstalled: false,
   terraAddress: "",
+  defichainAddress: "",
+  defichainConnected: false,
   loadNonEVMModal: async (_: NonEVMMode) => {},
   logoutNonEVMModal: async () => {},
   setFlowInToChain: () => {},
@@ -49,8 +67,12 @@ interface NonEVMContextProviderProps {
   children: ReactChild | ReactChild[] | ReactChildren | ReactChildren[];
 }
 
-export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps): JSX.Element => {
-  const { fromChain, toChain, transferConfig } = useAppSelector(state => state.transferInfo);
+export const NonEVMContextProvider = ({
+  children,
+}: NonEVMContextProviderProps): JSX.Element => {
+  const { fromChain, toChain, transferConfig } = useAppSelector(
+    (state) => state.transferInfo
+  );
   const [nonEVMMode, setNonEVMMode] = useState<NonEVMMode>(NonEVMMode.off);
   const [nonEVMAddress, setNonEVMAddress] = useState("");
   const [nonEVMConnected, setNonEVMConnected] = useState(false);
@@ -59,13 +81,23 @@ export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps):
   const [flowConnected, setFlowConnected] = useState(false);
   const [flowAddress, setFlowAddress] = useState("");
   const [shouldSwitchToFlow, setShouldSwitchToFlow] = useState(false);
-  const [shouldLetFlowStayInToChain, setShouldLetFlowStayInToChain] = useState(false);
+  const [shouldLetFlowStayInToChain, setShouldLetFlowStayInToChain] =
+    useState(false);
 
-  const { status, wallets, connect, disconnect, availableInstallations, availableConnectTypes } = useWallet();
+  const {
+    status,
+    wallets,
+    connect,
+    disconnect,
+    availableInstallations,
+    availableConnectTypes,
+  } = useWallet();
   const terraConnectedWallet = useConnectedWallet();
   const [terraStationInstalled, setTerraStationInstalled] = useState(false);
   const [terraConnected, setTerraConnected] = useState(false);
   const [terraAddress, setTerraAddress] = useState("");
+  const [defichainAddress, setDefichainAddress] = useState("");
+  const [defichainConnected, setDefichainConnected] = useState(false);
 
   const dispatch = useAppDispatch();
 
@@ -76,28 +108,43 @@ export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps):
           setShouldSwitchToFlow(true);
           fcl.authenticate();
         }
-      } else if (mode === NonEVMMode.terraMainnet || mode === NonEVMMode.terraTest) {
+      } else if (
+        mode === NonEVMMode.terraMainnet ||
+        mode === NonEVMMode.terraTest
+      ) {
         if (!terraConnected) {
           connect(ConnectType.EXTENSION);
         }
+      } else if (mode === NonEVMMode.defichainMainnet) {
+        // no connect needed
+        setDefichainConnected(true);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [flowConnected, terraConnected],
+    [flowConnected, terraConnected, defichainConnected]
   );
 
   const logoutNonEVMModal = useCallback(async () => {
-    if (nonEVMMode === NonEVMMode.flowMainnet || nonEVMMode === NonEVMMode.flowTest) {
+    if (
+      nonEVMMode === NonEVMMode.flowMainnet ||
+      nonEVMMode === NonEVMMode.flowTest
+    ) {
       if (flowConnected) {
         fcl.unauthenticate();
       }
-    } else if (nonEVMMode === NonEVMMode.terraMainnet || nonEVMMode === NonEVMMode.terraTest) {
+    } else if (
+      nonEVMMode === NonEVMMode.terraMainnet ||
+      nonEVMMode === NonEVMMode.terraTest
+    ) {
       if (terraConnected) {
         disconnect();
       }
+    } else if (nonEVMMode === NonEVMMode.defichainMainnet) {
+      // no disconnect needed
+      setDefichainConnected(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nonEVMMode, flowConnected, terraConnected]);
+  }, [nonEVMMode, flowConnected, terraConnected, defichainConnected]);
 
   useEffect(() => {
     const fromChainMode = getNonEVMMode(fromChain?.id ?? 0);
@@ -113,17 +160,34 @@ export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps):
     if (nonEVMMode === NonEVMMode.off) {
       setNonEVMConnected(false);
       setNonEVMAddress("");
-    } else if (nonEVMMode === NonEVMMode.flowMainnet || nonEVMMode === NonEVMMode.flowTest) {
+    } else if (
+      nonEVMMode === NonEVMMode.flowMainnet ||
+      nonEVMMode === NonEVMMode.flowTest
+    ) {
       setNonEVMConnected(flowConnected);
       setNonEVMAddress(flowAddress);
-    } else if (nonEVMMode === NonEVMMode.terraMainnet || nonEVMMode === NonEVMMode.terraTest) {
+    } else if (
+      nonEVMMode === NonEVMMode.terraMainnet ||
+      nonEVMMode === NonEVMMode.terraTest
+    ) {
       setNonEVMConnected(terraConnected);
       setNonEVMAddress(terraAddress);
+    } else if (nonEVMMode === NonEVMMode.defichainMainnet) {
+      setNonEVMConnected(defichainConnected);
+      setNonEVMAddress(defichainAddress);
     } else {
       setNonEVMConnected(false);
       setNonEVMAddress("");
     }
-  }, [nonEVMMode, flowConnected, flowAddress, terraConnected, terraAddress]);
+  }, [
+    nonEVMMode,
+    flowConnected,
+    flowAddress,
+    terraConnected,
+    terraAddress,
+    defichainAddress,
+    defichainConnected,
+  ]);
 
   useEffect(() => {
     if (status === WalletStatus.WALLET_CONNECTED) {
@@ -138,25 +202,42 @@ export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps):
       setTerraAddress("");
     }
 
-    const terraExtension = availableConnectTypes.find(type => {
+    const terraExtension = availableConnectTypes.find((type) => {
       return type === ConnectType.EXTENSION;
     });
-    const stationWallet = availableInstallations.find(installation => {
-      return installation.type === ConnectType.EXTENSION && installation.identifier.includes("station");
+    const stationWallet = availableInstallations.find((installation) => {
+      return (
+        installation.type === ConnectType.EXTENSION &&
+        installation.identifier.includes("station")
+      );
     });
 
     /// Extension available and install doesn't contain station
-    setTerraStationInstalled(stationWallet === undefined && terraExtension !== undefined);
-  }, [status, availableConnectTypes, availableInstallations, wallets, terraConnectedWallet]);
+    setTerraStationInstalled(
+      stationWallet === undefined && terraExtension !== undefined
+    );
+  }, [
+    status,
+    availableConnectTypes,
+    availableInstallations,
+    wallets,
+    terraConnectedWallet,
+  ]);
 
   useEffect(() => {
     /// FCL config
 
-    if (process.env.REACT_APP_ENV === "TEST" || process.env.REACT_APP_ENV === "DEV") {
+    if (
+      process.env.REACT_APP_ENV === "TEST" ||
+      process.env.REACT_APP_ENV === "DEV"
+    ) {
       fcl
         .config()
         .put("accessNode.api", "https://access-testnet.onflow.org")
-        .put("discovery.wallet", "https://flow-wallet-testnet.blocto.app/authn"); // mainent:https://flow-wallet.blocto.app/authn
+        .put(
+          "discovery.wallet",
+          "https://flow-wallet-testnet.blocto.app/authn"
+        ); // mainent:https://flow-wallet.blocto.app/authn
     } else {
       fcl
         .config()
@@ -166,7 +247,7 @@ export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps):
         .put("grpc.metadata", { api_key: "u59zhmfnv7s2mcubk0ppbdyo1lomvnfc" });
     }
 
-    fcl.currentUser().subscribe(user => {
+    fcl.currentUser().subscribe((user) => {
       const { loggedIn, addr } = user;
 
       if (loggedIn && loggedIn !== undefined) {
@@ -175,12 +256,13 @@ export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps):
           const fromChainId = fromChain?.id ?? 0;
           if (shouldSwitchToFlow) {
             const targetChainIdForFlow = targetChainIdForNonEVMMode(
-              process.env.REACT_APP_ENV === "TEST" || process.env.REACT_APP_ENV === "DEV"
+              process.env.REACT_APP_ENV === "TEST" ||
+                process.env.REACT_APP_ENV === "DEV"
                 ? NonEVMMode.flowTest
-                : NonEVMMode.flowMainnet,
+                : NonEVMMode.flowMainnet
             );
             if (fromChainId !== targetChainIdForFlow) {
-              const chain = transferConfig.chains.find(chainInfo => {
+              const chain = transferConfig.chains.find((chainInfo) => {
                 return chainInfo.id === targetChainIdForFlow;
               });
               if (chain !== undefined && !shouldLetFlowStayInToChain) {
@@ -201,7 +283,14 @@ export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps):
       }
       setFlowUser({ ...user });
     });
-  }, [fromChain, toChain, transferConfig, shouldSwitchToFlow, shouldLetFlowStayInToChain, dispatch]);
+  }, [
+    fromChain,
+    toChain,
+    transferConfig,
+    shouldSwitchToFlow,
+    shouldLetFlowStayInToChain,
+    dispatch,
+  ]);
 
   const setFlowInToChain = () => {
     setShouldLetFlowStayInToChain(true);
@@ -219,6 +308,8 @@ export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps):
         terraConnected,
         terraStationInstalled,
         terraAddress,
+        defichainAddress,
+        defichainConnected,
         loadNonEVMModal,
         logoutNonEVMModal,
         setFlowInToChain,
@@ -228,13 +319,18 @@ export const NonEVMContextProvider = ({ children }: NonEVMContextProviderProps):
     </NonEVMContext.Provider>
   );
 };
-export const useNonEVMContext: () => NonEVMContextProps = () => useContext(NonEVMContext);
+export const useNonEVMContext: () => NonEVMContextProps = () =>
+  useContext(NonEVMContext);
 
 export const isNonEVMChain = (chainId: number) => {
   return getNonEVMMode(chainId) !== NonEVMMode.off;
 };
 
 export const getNonEVMMode = (targetChainId: number) => {
+  if (targetChainId === 560000) {
+    return NonEVMMode.defichainMainnet;
+  }
+
   if (targetChainId === 12340001) {
     return NonEVMMode.flowMainnet;
   }
@@ -267,6 +363,10 @@ const targetChainIdForNonEVMMode = (mode: NonEVMMode) => {
     return 999999998;
   }
 
+  if (mode === NonEVMMode.defichainMainnet) {
+    return 560000;
+  }
+
   if (mode === NonEVMMode.terraTest) {
     return 999999999;
   }
@@ -275,7 +375,10 @@ const targetChainIdForNonEVMMode = (mode: NonEVMMode) => {
   return 0;
 };
 
-export const convertNonEVMAddressToEVMCompatible = async (address: string, mode: NonEVMMode) => {
+export const convertNonEVMAddressToEVMCompatible = async (
+  address: string,
+  mode: NonEVMMode
+) => {
   if (mode === NonEVMMode.flowMainnet || mode === NonEVMMode.flowTest) {
     const addressWithoutOx = address.toLowerCase().replace("0x", "");
     return "0x" + addressWithoutOx.padStart(40, "0");

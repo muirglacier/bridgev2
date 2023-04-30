@@ -1,0 +1,100 @@
+{
+  "err": null,
+  "chains": [
+    {
+      "id": 56,
+      "name": "Binance Smart Chain",
+      "icon": "https://get.celer.app/cbridge-icons/chain-icon/BNB-chain.png",
+      "block_delay": 8,
+      "gas_token_symbol": "BNB",
+      "explore_url": "https://bscscan.com/",
+      "contract_addr": "0xdd90E5E87A2081Dcf0391920868eBc2FFB81a1aF",
+      "drop_gas_amt": "0",
+      "drop_gas_cost_amt": "0",
+      "drop_gas_balance_alert": "0",
+      "suggested_gas_cost": "151000",
+      "flat_usd_fee": 0,
+      "farming_reward_contract_addr": "",
+      "transfer_agent_contract_addr": ""
+    },
+    {
+      "id": 560000,
+      "name": "Defichain",
+      "icon": "https://img.api.cryptorank.io/coins/150x150.defichain1606809629170.png",
+      "block_delay": 8,
+      "gas_token_symbol": "DFI",
+      "explore_url": "https://defiscan.live/",
+      "contract_addr": "0xdd90E5E87A2081Dcf0391920868eBc2FFB81a1aF",
+      "drop_gas_amt": "0",
+      "drop_gas_cost_amt": "0",
+      "drop_gas_balance_alert": "0",
+      "suggested_gas_cost": "151000",
+      "flat_usd_fee": 0,
+      "farming_reward_contract_addr": "",
+      "transfer_agent_contract_addr": ""
+    }
+  ],
+  "chain_token": {
+    "56": {
+      "token": [
+        {
+          "token": {
+            "symbol": "DFI",
+            "address": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
+            "decimal": 8,
+            "xfer_disabled": false
+          },
+          "name": "DFI Token",
+          "icon": "https://get.celer.app/cbridge-icons/aave.png"
+        }
+      ]
+    },
+    "560000": {
+      "token": [
+        {
+          "token": {
+            "symbol": "DFI",
+            "address": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
+            "decimal": 8,
+            "xfer_disabled": false
+          },
+          "name": "DFI Token",
+          "icon": "https://get.celer.app/cbridge-icons/aave.png"
+        }
+      ]
+    }
+  },
+  "farming_reward_contract_addr": "0x61f85fF2a2f4289Be4bb9B72Fc7010B3142B5f41",
+  "pegged_pair_configs": [
+    {
+      "org_chain_id": 560000,
+      "org_token": {
+        "token": {
+          "symbol": "DFI",
+          "address": "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+          "decimal": 8,
+          "xfer_disabled": false
+        },
+        "name": "DFI Token",
+        "icon": "https://img.api.cryptorank.io/coins/150x150.defichain1606809629170.png"
+      },
+      "pegged_chain_id": 56,
+      "pegged_token": {
+        "token": {
+          "symbol": "DFI",
+          "address": "0xea129aE043C4cB73DcB241AAA074F9E667641BA0",
+          "decimal": 8,
+          "xfer_disabled": false
+        },
+        "name": "DFI Token (Wrapped)",
+        "icon": "https://img.api.cryptorank.io/coins/150x150.defichain1606809629170.png"
+      },
+      "pegged_deposit_contract_addr": "0xB37D31b2A74029B5951a2778F959282E2D518595",
+      "pegged_burn_contract_addr": "0x61f85fF2a2f4289Be4bb9B72Fc7010B3142B5f41",
+      "canonical_token_contract_addr": "0x2E3D870790dC77A83DD1d18184Acc7439A53f475",
+      "vault_version": 0,
+      "bridge_version": 0,
+      "migration_peg_burn_contract_addr": ""
+    }
+  ]
+}

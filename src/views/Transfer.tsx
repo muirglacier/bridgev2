@@ -6,8 +6,19 @@ import { formatUnits } from "@ethersproject/units";
 import { BigNumber } from "@ethersproject/bignumber";
 import { MaxUint256 } from "@ethersproject/constants";
 import { debounce } from "lodash";
-import { WarningFilled, InfoCircleOutlined, DownOutlined, CloseCircleFilled } from "@ant-design/icons";
-import { deleteDecimalPart, safeParseUnits, formatDecimalPart, sub } from "celer-web-utils/lib/format";
+import BridgeAwesomeLogo from "../images/bridge_logo_jelly.svg";
+import {
+  WarningFilled,
+  InfoCircleOutlined,
+  DownOutlined,
+  CloseCircleFilled,
+} from "@ant-design/icons";
+import {
+  deleteDecimalPart,
+  safeParseUnits,
+  formatDecimalPart,
+  sub,
+} from "celer-web-utils/lib/format";
 import { AccAddress } from "@terra-money/terra.js";
 import { JsonRpcProvider } from "@ethersproject/providers";
 
@@ -38,7 +49,6 @@ import {
 import {
   useCustomContractLoader,
   useTokenBalance,
-  useBigAmountDelay,
   useNativeETHToken,
   useNonEVMTokenBalance,
 } from "../hooks";
@@ -59,16 +69,31 @@ import settingIcon from "../images/setting.svg";
 import arrowUpDowm from "../images/arrowupdown.svg";
 import arrowDowm from "../images/arrow-D.svg";
 import RateModal from "../components/RateModal";
-import TransferOverview, { getTokenDisplaySymbol } from "./transfer/TransferOverview";
+import TransferOverview, {
+  getTokenDisplaySymbol,
+} from "./transfer/TransferOverview";
 import { WebClient } from "../proto/gateway/GatewayServiceClientPb";
-import { EstimateAmtRequest, ErrCode, GetTokenBoundRequest } from "../proto/gateway/gateway_pb";
+import {
+  EstimateAmtRequest,
+  ErrCode,
+  GetTokenBoundRequest,
+} from "../proto/gateway/gateway_pb";
 import { minimum, maximum } from "../helpers/calculation";
 import { getTokenSymbol, getTokenListSymbol } from "../redux/assetSlice";
-import { PeggedChainMode, usePeggedPairConfig, GetPeggedMode } from "../hooks/usePeggedPairConfig";
+import {
+  PeggedChainMode,
+  usePeggedPairConfig,
+  GetPeggedMode,
+} from "../hooks/usePeggedPairConfig";
 import { useMaxPeggedTokenAmount } from "../hooks/useMaxPeggedTokenAmount";
 import { useTransferSupportedTokenList } from "../hooks/transferSupportedInfoList";
 import { useWalletConnectionContext } from "../providers/WalletConnectionContextProvider";
-import { NonEVMMode, useNonEVMContext, isNonEVMChain, getNonEVMMode } from "../providers/NonEVMContextProvider";
+import {
+  NonEVMMode,
+  useNonEVMContext,
+  isNonEVMChain,
+  getNonEVMMode,
+} from "../providers/NonEVMContextProvider";
 import {
   checkTokenReceivabilityForFlowAccount,
   setupTokenVaultForFlowAccount,
@@ -96,466 +121,488 @@ import { useCoMinterCaps } from "../hooks/useCoMinterCaps";
 import { coMinterChains } from "../constants/const";
 import { useMultiBurnConfig } from "../hooks/useMultiBurnConfig";
 import { getTokenBound } from "../redux/gateway";
-import { useIsWrapTokenTransferAtLimit, WrapTokenCaps } from "../hooks/useIsWrapTokenTransferAtLimit";
+import {
+  useIsWrapTokenTransferAtLimit,
+  WrapTokenCaps,
+} from "../hooks/useIsWrapTokenTransferAtLimit";
 import { isApeChain } from "../hooks/useTransfer";
 import { ApeTip } from "./nft/ApeTips";
+import { customOverrideEstimateAmt } from "../utils/customBridgeOverrides";
 
 /* eslint-disable */
 /* eslint-disable camelcase */
-const useStyles = createUseStyles<string, { isMobile: boolean }, Theme>((theme: Theme) => ({
-  flexCenter: {
-    display: "flex",
-    flexFlow: "column",
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  transferCard: {
-    position: "relative",
-    width: "100%",
-    maxWidth: 560,
-    marginTop: props => (props.isMobile ? 0 : 45),
-    borderRadius: props => (props.isMobile ? 0 : 16),
-    background: props => (props.isMobile ? "transparent" : theme.secondBackground),
-    border: props => (props.isMobile ? "none" : `1px solid ${theme.primaryBorder}`),
-    "& .ant-card-head": {
-      color: theme.primaryBrand,
-      fontSize: 22,
-      borderBottom: `1px solid ${theme.primaryBorder}`,
-      padding: "30px 32px 10px 32px",
-      fontWeight: 700,
+const useStyles = createUseStyles<string, { isMobile: boolean }, Theme>(
+  (theme: Theme) => ({
+    flexCenter: {
+      display: "flex",
+      flexFlow: "column",
+      alignItems: "center",
+      justifyContent: "flex-start",
     },
-    "& .ant-card-body": {
-      padding: props => (props.isMobile ? "18px 16px 24px 16px" : 32),
-    },
-    "& .ant-card-head-title": {
-      padding: "0",
-      lineHeight: 1,
-      marginBottom: 7,
-      height: "25px",
-    },
-    "& .ant-card-extra": {
-      padding: "0",
-      lineHeight: 1,
-    },
-  },
-  settingIcon: {
-    width: 24,
-    filter: `brightness(${theme.isLight ? 0 : 100})`,
-  },
-  contCover: {
-    width: "100%",
-    height: "100%",
-    borderRadius: "12px",
-    background: theme.transferCover,
-    position: "absolute",
-    left: 0,
-    top: 0,
-    zIndex: 10,
-  },
-  cardContent: {
-    position: "relative",
-    width: props => (props.isMobile ? "100%" : 496),
-  },
-  trans: {},
-  err: {
-    width: "100%",
-    textAlign: "center",
-    display: "flex",
-    justifyContent: "center",
-    minHeight: props => (props.isMobile ? 0 : 24),
-  },
-  btnare: {
-    position: "absolute",
-    width: "100%",
-    top: 0,
-    left: 0,
-    zIndex: 15,
-  },
-  btnarein: {
-    width: "100%",
-    display: "flex",
-    justifyContent: "center",
-  },
-  buttonBg: {
-    width: "100%",
-  },
-  createflowBtn: {
-    marginBottom: "20px !important",
-  },
-  approveBg: {
-    width: "100%",
-    display: "flex",
-    justifyContent: "space-between",
-  },
-  approveBgMobile: {
-    width: "100%",
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: 20,
-  },
-
-  approveTransBtn: {
-    width: "49%",
-    margin: "0",
-    height: 56,
-    fontSize: 16,
-    fontWeight: 700,
-    borderRadius: 16,
-    background: theme.primaryBrand,
-    border: 0,
-    "&:focus, &:hover": {
-      background: theme.buttonHover,
-    },
-    "&::before": {
-      backgroundColor: `${theme.primaryBrand} !important`,
-    },
-  },
-
-  transBtn: {
-    // width: 560,
-    width: "100%",
-    margin: "0",
-    height: 56,
-    fontSize: 16,
-    fontWeight: 700,
-    borderRadius: 16,
-    background: theme.primaryBrand,
-    border: 0,
-    "&:focus, &:hover": {
-      background: theme.buttonHover,
-    },
-    "&::before": {
-      backgroundColor: `${theme.primaryBrand} !important`,
-    },
-  },
-  cont: {
-    width: "100%",
-    //  fontSize: theme.transferFontS,
-  },
-  transMobileBtn: {
-    marginTop: 20,
-    width: "calc(100vw - 32px)",
-    height: 55,
-    fontSize: 16,
-    borderRadius: 16,
-    background: theme.primaryBrand,
-    border: 0,
-    fontWeight: 700,
-    "&:focus, &:hover": {
-      background: theme.buttonHover,
-    },
-    "&::before": {
-      backgroundColor: `${theme.primaryBrand} !important`,
-    },
-  },
-  transitem: {},
-  transitemTitle: {
-    //   background: theme.dark.contentBackground,
-    color: theme.surfacePrimary,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    // padding: "0 12px",
-  },
-  transcontent: {
-    borderRadius: "16px",
-    background: theme.primaryBackground,
-    padding: "15px 0",
-    marginTop: 8,
-  },
-  transInfoItem: {
-    display: "flex",
-    justifyContent: "space-between",
-  },
-  transInfoTitle: {
-    color: theme.secondBrand,
-    fontSize: 12,
-    fontWeight: 600,
-  },
-  transInfoContent: {
-    color: theme.unityBlack,
-    fontSize: 12,
-    fontWeight: 600,
-    "& img": {
-      width: 16,
-      height: 16,
-    },
-  },
-  icon: {
-    width: "100%",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    margin: props => (props.isMobile ? "17px 0" : "13px 0"),
-  },
-  source: {
-    display: "inline-block",
-    marginRight: 8,
-    fontSize: 14,
-    width: props => (props.isMobile ? "" : 35),
-  },
-  transselect: {
-    background: theme.primaryBackground,
-    display: "inline-block",
-    minWidth: 100,
-    borderRadius: 100,
-  },
-  transChainame: {
-    fontSize: props => (props.isMobile ? 12 : 14),
-    fontWeight: props => (props.isMobile ? 400 : 500),
-    textAlign: props => (props.isMobile ? "right" : ""),
-  },
-  transnum: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 12px",
-    marginTop: 3,
-    color: theme.secondBrand,
-  },
-  transnumtext: {
-    fontSize: 12,
-    fontWeight: 600,
-    float: "left",
-    color: theme.secondBrand,
-  },
-  transnumlimt: {
-    borderBottom: "1px solid #8F9BB3",
-    cursor: "pointer",
-    fontSize: 12,
-  },
-
-  nonEvmRecipientText: {
-    fontSize: 12,
-    fontWeight: 600,
-    display: "flex",
-    color: theme.secondBrand,
-    padding: "0 12px",
-  },
-
-  transndes: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 12px",
-    marginTop: 18,
-    fontSize: 20,
-  },
-  transdestext: {
-    //   fontSize: theme.transferFontXl,
-    color: theme.surfacePrimary,
-    float: "left",
-    flex: 2,
-    "& .ant-input::-webkit-input-placeholder": {
-      color: `${theme.surfacePrimary} !important`,
-    },
-  },
-  nonEvmAddressText: {
-    color: theme.surfacePrimary,
-    float: "left",
-    flex: 2,
-    "& .ant-input": {
+    transferCard: {
+      position: "relative",
       width: "100%",
-      fontSize: 14,
+      maxWidth: 560,
+      marginTop: (props) => (props.isMobile ? 0 : 45),
+      borderRadius: (props) => (props.isMobile ? 0 : 16),
+      background: (props) =>
+        props.isMobile ? "transparent" : theme.secondBackground,
+      border: (props) =>
+        props.isMobile ? "none" : `1px solid ${theme.primaryBorder}`,
+      "& .ant-card-head": {
+        color: theme.primaryBrand,
+        fontSize: 22,
+        borderBottom: `1px solid ${theme.primaryBorder}`,
+        padding: "30px 32px 10px 32px",
+        fontWeight: 700,
+      },
+      "& .ant-card-body": {
+        padding: (props) => (props.isMobile ? "18px 16px 24px 16px" : 32),
+      },
+      "& .ant-card-head-title": {
+        padding: "0",
+        lineHeight: 1,
+        marginBottom: 7,
+        height: "25px",
+      },
+      "& .ant-card-extra": {
+        padding: "0",
+        lineHeight: 1,
+      },
+    },
+    settingIcon: {
+      width: 24,
+      filter: `brightness(${theme.isLight ? 0 : 100})`,
+    },
+    contCover: {
+      width: "100%",
+      height: "100%",
+      borderRadius: "12px",
+      background: theme.transferCover,
+      position: "absolute",
+      left: 0,
+      top: 0,
+      zIndex: 10,
+    },
+    cardContent: {
+      position: "relative",
+      width: (props) => (props.isMobile ? "100%" : 496),
+    },
+    trans: {},
+    err: {
+      width: "100%",
+      textAlign: "center",
+      display: "flex",
+      justifyContent: "center",
+      minHeight: (props) => (props.isMobile ? 0 : 24),
+    },
+    btnare: {
+      position: "absolute",
+      width: "100%",
+      top: 0,
+      left: 0,
+      zIndex: 15,
+    },
+    btnarein: {
+      width: "100%",
+      display: "flex",
+      justifyContent: "center",
+    },
+    buttonBg: {
+      width: "100%",
+    },
+    createflowBtn: {
+      marginBottom: "20px !important",
+    },
+    approveBg: {
+      width: "100%",
+      display: "flex",
+      justifyContent: "space-between",
+    },
+    approveBgMobile: {
+      width: "100%",
+      display: "flex",
+      justifyContent: "space-between",
+      marginTop: 20,
+    },
+
+    approveTransBtn: {
+      width: "49%",
+      margin: "0",
+      height: 56,
+      fontSize: 16,
+      fontWeight: 700,
+      borderRadius: 16,
+      background: theme.primaryBrand,
+      border: 0,
+      "&:focus, &:hover": {
+        background: theme.buttonHover,
+      },
+      "&::before": {
+        backgroundColor: `${theme.primaryBrand} !important`,
+      },
+    },
+
+    transBtn: {
+      // width: 560,
+      width: "100%",
+      margin: "0",
+      height: 56,
+      fontSize: 16,
+      fontWeight: 700,
+      borderRadius: 16,
+      background: theme.primaryBrand,
+      border: 0,
+      "&:focus, &:hover": {
+        background: theme.buttonHover,
+      },
+      "&::before": {
+        backgroundColor: `${theme.primaryBrand} !important`,
+      },
+    },
+    cont: {
+      width: "100%",
+      //  fontSize: theme.transferFontS,
+    },
+    transMobileBtn: {
+      marginTop: 20,
+      width: "calc(100vw - 32px)",
+      height: 55,
+      fontSize: 16,
+      borderRadius: 16,
+      background: theme.primaryBrand,
+      border: 0,
+      fontWeight: 700,
+      "&:focus, &:hover": {
+        background: theme.buttonHover,
+      },
+      "&::before": {
+        backgroundColor: `${theme.primaryBrand} !important`,
+      },
+    },
+    transitem: {},
+    transitemTitle: {
+      //   background: theme.dark.contentBackground,
+      color: theme.surfacePrimary,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      // padding: "0 12px",
+    },
+    transcontent: {
+      borderRadius: "16px",
+      background: theme.primaryBackground,
+      padding: "15px 0",
+      marginTop: 8,
+    },
+    transInfoItem: {
+      display: "flex",
+      justifyContent: "space-between",
+    },
+    transInfoTitle: {
+      color: theme.secondBrand,
+      fontSize: 12,
       fontWeight: 600,
     },
-    "& .ant-input::-webkit-input-placeholder": {
-      color: `${theme.selectChainBorder} !important`,
+    transInfoContent: {
+      color: theme.unityBlack,
+      fontSize: 12,
+      fontWeight: 600,
+      "& img": {
+        width: 16,
+        height: 16,
+      },
     },
-
-    "& .ant-input[disabled]": {
-      color: `${theme.surfacePrimary} !important`,
-    },
-  },
-  transdeslimt: {
-    position: "relative",
-    flex: 1,
-  },
-  investSelct: {
-    display: "flex",
-    position: "absolute",
-    top: -13,
-    right: 0,
-    alignItems: "baseline",
-  },
-  selectpic: {
-    width: 24,
-    height: 24,
-    borderRadius: "50%",
-    "& img": {
+    icon: {
       width: "100%",
-      borderRadius: "50%",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      margin: (props) => (props.isMobile ? "17px 0" : "13px 0"),
     },
-  },
-  selectdes: {
-    marginLeft: 5,
-    marginRight: 5,
-    fontSize: 16,
-    fontWeight: 600,
-    color: theme.surfacePrimary,
-  },
-  selecttoog: {
-    height: 14,
-    color: theme.surfacePrimary,
-  },
-
-  chainSelcet: {
-    borderRadius: 16,
-    background: theme.primaryBackground,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingLeft: 8,
-    paddingRight: 10,
-    height: 40,
-    fontSize: 16,
-    fontWeight: 600,
-  },
-  msgBoldInnerbody: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 6,
-    color: "#17171A",
-    fontWeight: "bold",
-    textAlign: "left",
-    margin: "8px 12px",
-  },
-
-  warningMessage: {
-    color: theme.textWarning,
-  },
-  errInner: {
-    color: theme.infoDanger,
-    textAlign: "left",
-    margin: props => (props.isMobile ? "24px 0 0 0" : "24px 0"),
-    background: "#fff",
-    boxShadow: "0px 6px 12px -6px rgba(24, 39, 75, 0.12), 0px 8px 24px -4px rgba(24, 39, 75, 0.08)",
-    borderRadius: 8,
-    fontSize: 14,
-  },
-  errMessage: {
-    width: "100vw",
-    position: "fixed",
-    top: 122,
-    left: 0,
-    textAlign: "center",
-  },
-  errMessageMobile: {
-    width: "calc(100vw - 32px)",
-    position: "relative",
-    top: -45,
-    left: 0,
-    textAlign: "center",
-  },
-  messageBody: {
-    fontSize: 16,
-    padding: "8px 15px",
-    background: "#fff",
-    //   width: theme.tipsWidth,
-    borderRadius: 12,
-    margin: "0 auto",
-    // textAlign: "left",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  setting: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    width: 432,
-    height: 156,
-    background: theme.secondBackground,
-    borderRadius: 16,
-    border: `1px solid ${theme.primaryBorder}`,
-  },
-  settingTitle: {
-    color: theme.surfacePrimary,
-    fontSize: 13,
-  },
-  settingContent: {},
-  transcontenttip: {
-    fontSize: 12,
-    fontWeight: 400,
-    color: theme.unityBlack,
-  },
-  tipTitle: {
-    fontSize: 13,
-    width: "100%",
-    textAlign: "center",
-    fontWeight: 400,
-    marginBottom: 10,
-  },
-  mobileTooltipOverlayStyle: {
-    "& .ant-tooltip-inner": {
-      width: "calc(100vw - 40px) !important",
-      borderRadius: 8,
+    source: {
+      display: "inline-block",
+      marginRight: 8,
+      fontSize: 14,
+      width: (props) => (props.isMobile ? "" : 35),
     },
-    "& .ant-tooltip-arrow-content": {
-      width: 9,
-      height: 9,
-    },
-  },
-  mobileRateModal: {
-    width: "calc(100% - 32px)",
-    minWidth: "calc(100% - 32px)",
-    border: `1px solid ${theme.primaryBorder}`,
-    borderRadius: 16,
-    height: "auto",
-    margin: 8,
-    "& .ant-modal-content": {
+    transselect: {
       background: theme.primaryBackground,
-      borderRadius: 16,
-      "& .ant-modal-header": {
-        background: "transparent",
-        borderRadius: 16,
-      },
-      "& .ant-modal-body": {
-        padding: "16px 16px",
-        background: "transparent",
+      display: "inline-block",
+      minWidth: 100,
+      borderRadius: 100,
+    },
+    transChainame: {
+      fontSize: (props) => (props.isMobile ? 12 : 14),
+      fontWeight: (props) => (props.isMobile ? 400 : 500),
+      textAlign: (props) => (props.isMobile ? "right" : ""),
+    },
+    transnum: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "0 12px",
+      marginTop: 3,
+      color: theme.secondBrand,
+    },
+    transnumtext: {
+      fontSize: 12,
+      fontWeight: 600,
+      float: "left",
+      color: theme.secondBrand,
+    },
+    transnumlimt: {
+      borderBottom: "1px solid #8F9BB3",
+      cursor: "pointer",
+      fontSize: 12,
+    },
+
+    nonEvmRecipientText: {
+      fontSize: 12,
+      fontWeight: 600,
+      display: "flex",
+      color: theme.secondBrand,
+      padding: "0 12px",
+    },
+
+    transndes: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "0 12px",
+      marginTop: 18,
+      fontSize: 20,
+    },
+    transdestext: {
+      //   fontSize: theme.transferFontXl,
+      color: theme.surfacePrimary,
+      float: "left",
+      flex: 2,
+      "& .ant-input::-webkit-input-placeholder": {
+        color: `${theme.surfacePrimary} !important`,
       },
     },
-  },
-  safeguardToastBox: {
-    display: "flex",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    gap: 11,
-    width: "100%",
-    borderRadius: 4,
-    padding: "8px 12px 8px 12px",
-    background: theme.primaryBackground,
-  },
-  errorMsg: {
-    fontSize: 14,
-    color: theme.infoDanger,
-    textAlign: "left",
-  },
-  warningMsg: {
-    fontSize: 14,
-    color: theme.infoWarning,
-    textAlign: "left",
-  },
-}));
+    nonEvmAddressText: {
+      color: theme.surfacePrimary,
+      float: "left",
+      flex: 2,
+      "& .ant-input": {
+        width: "100%",
+        fontSize: 14,
+        fontWeight: 600,
+      },
+      "& .ant-input::-webkit-input-placeholder": {
+        color: `${theme.selectChainBorder} !important`,
+      },
+
+      "& .ant-input[disabled]": {
+        color: `${theme.surfacePrimary} !important`,
+      },
+    },
+    transdeslimt: {
+      position: "relative",
+      flex: 1,
+    },
+    investSelct: {
+      display: "flex",
+      position: "absolute",
+      top: -13,
+      right: 0,
+      alignItems: "baseline",
+    },
+    selectpic: {
+      width: 24,
+      height: 24,
+      borderRadius: "50%",
+      "& img": {
+        width: "100%",
+        borderRadius: "50%",
+      },
+    },
+    selectdes: {
+      marginLeft: 5,
+      marginRight: 5,
+      fontSize: 16,
+      fontWeight: 600,
+      color: theme.surfacePrimary,
+    },
+    selecttoog: {
+      height: 14,
+      color: theme.surfacePrimary,
+    },
+
+    chainSelcet: {
+      borderRadius: 16,
+      background: theme.primaryBackground,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingLeft: 8,
+      paddingRight: 10,
+      height: 40,
+      fontSize: 16,
+      fontWeight: 600,
+    },
+    msgBoldInnerbody: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 6,
+      color: "#17171A",
+      fontWeight: "bold",
+      textAlign: "left",
+      margin: "8px 12px",
+    },
+
+    warningMessage: {
+      color: theme.textWarning,
+    },
+    errInner: {
+      color: theme.infoDanger,
+      textAlign: "left",
+      margin: (props) => (props.isMobile ? "24px 0 0 0" : "24px 0"),
+      background: "#fff",
+      boxShadow:
+        "0px 6px 12px -6px rgba(24, 39, 75, 0.12), 0px 8px 24px -4px rgba(24, 39, 75, 0.08)",
+      borderRadius: 8,
+      fontSize: 14,
+    },
+    errMessage: {
+      width: "100vw",
+      position: "fixed",
+      top: 122,
+      left: 0,
+      textAlign: "center",
+    },
+    errMessageMobile: {
+      width: "calc(100vw - 32px)",
+      position: "relative",
+      top: -45,
+      left: 0,
+      textAlign: "center",
+    },
+    messageBody: {
+      fontSize: 16,
+      padding: "8px 15px",
+      background: "#fff",
+      //   width: theme.tipsWidth,
+      borderRadius: 12,
+      margin: "0 auto",
+      // textAlign: "left",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    setting: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      width: 432,
+      height: 156,
+      background: theme.secondBackground,
+      borderRadius: 16,
+      border: `1px solid ${theme.primaryBorder}`,
+    },
+    settingTitle: {
+      color: theme.surfacePrimary,
+      fontSize: 13,
+    },
+    settingContent: {},
+    transcontenttip: {
+      fontSize: 12,
+      fontWeight: 400,
+      color: theme.unityBlack,
+    },
+    tipTitle: {
+      fontSize: 13,
+      width: "100%",
+      textAlign: "center",
+      fontWeight: 400,
+      marginBottom: 10,
+    },
+    mobileTooltipOverlayStyle: {
+      "& .ant-tooltip-inner": {
+        width: "calc(100vw - 40px) !important",
+        borderRadius: 8,
+      },
+      "& .ant-tooltip-arrow-content": {
+        width: 9,
+        height: 9,
+      },
+    },
+    mobileRateModal: {
+      width: "calc(100% - 32px)",
+      minWidth: "calc(100% - 32px)",
+      border: `1px solid ${theme.primaryBorder}`,
+      borderRadius: 16,
+      height: "auto",
+      margin: 8,
+      "& .ant-modal-content": {
+        background: theme.primaryBackground,
+        borderRadius: 16,
+        "& .ant-modal-header": {
+          background: "transparent",
+          borderRadius: 16,
+        },
+        "& .ant-modal-body": {
+          padding: "16px 16px",
+          background: "transparent",
+        },
+      },
+    },
+    safeguardToastBox: {
+      display: "flex",
+      justifyContent: "flex-start",
+      alignItems: "center",
+      gap: 11,
+      width: "100%",
+      borderRadius: 4,
+      padding: "8px 12px 8px 12px",
+      background: theme.primaryBackground,
+    },
+    errorMsg: {
+      fontSize: 14,
+      color: theme.infoDanger,
+      textAlign: "left",
+    },
+    warningMsg: {
+      fontSize: 14,
+      color: theme.infoWarning,
+      textAlign: "left",
+    },
+  })
+);
 
 const Transfer: FC = () => {
-  const { isMobile } = useAppSelector(state => state.windowWidth);
+  const { isMobile } = useAppSelector((state) => state.windowWidth);
   const classes = useStyles({ isMobile });
   const {
-    contracts: { bridge, originalTokenVault, originalTokenVaultV2, peggedTokenBridge, peggedTokenBridgeV2 },
+    contracts: {
+      bridge,
+      originalTokenVault,
+      originalTokenVaultV2,
+      peggedTokenBridge,
+      peggedTokenBridgeV2,
+    },
     transactor,
   } = useContractsContext();
 
   const { provider, signer, chainId, address } = useWeb3Context();
-  const { connected, walletConnectionButtonTitle } = useWalletConnectionContext();
+  const { connected, walletConnectionButtonTitle } =
+    useWalletConnectionContext();
   const dispatch = useAppDispatch();
   const networkState = useNetworkState();
-  const { transferInfo, modal, globalInfo } = useAppSelector(state => state);
+  const { transferInfo, modal, globalInfo } = useAppSelector((state) => state);
   const { refreshGlobalTokenBalance } = globalInfo;
 
   // const globalTokenBalance = BigNumber.from(globalTokenBalanceString);
-  const { showProviderModal, showRateModal, showTransferModal, showFlowProviderModal, showTerraProviderModal } = modal;
+  const {
+    showProviderModal,
+    showRateModal,
+    showTransferModal,
+    showFlowProviderModal,
+    showTerraProviderModal,
+  } = modal;
   const {
     transferConfig,
     fromChain,
@@ -574,11 +621,18 @@ const Transfer: FC = () => {
     selectedToken?.token?.address || "",
     fromChain?.id,
     selectedToken?.token.symbol,
-    transferConfig.pegged_pair_configs,
+    transferConfig.pegged_pair_configs
   );
-  const tokenContract = useCustomContractLoader(provider, tokenAddress, ERC20__factory) as ERC20 | undefined;
+  const tokenContract = useCustomContractLoader(
+    provider,
+    tokenAddress,
+    ERC20__factory
+  ) as ERC20 | undefined;
 
-  const [tokenBalance, , , refreshBalance] = useTokenBalance(tokenContract, address);
+  const [tokenBalance, , , refreshBalance] = useTokenBalance(
+    tokenContract,
+    address
+  );
   const { getRpcUrlByChainId } = useConfigContext();
   const [amount, setAmount] = useState("");
   const [maxValue, setMaxValue] = useState("");
@@ -594,15 +648,18 @@ const Transfer: FC = () => {
   const [fee, setFee] = useState(0);
   const [minSendValue, setMinSendValue] = useState<BigNumber>();
   const [tokenEnabled, setTokenEnabled] = useState(true);
-  const { isNativeToken, ETHBalance } = useNativeETHToken(fromChain, selectedToken);
-  const { isBigAmountDelayed, delayMinutes, delayThresholds } = useBigAmountDelay(
-    toChain,
-    selectedToken?.token,
-    receiveAmount,
+  const { isNativeToken, ETHBalance } = useNativeETHToken(
+    fromChain,
+    selectedToken
   );
-  const { nonEVMBigAmountDelayed, nonEVMDelayTimeInMinute, nonEVMDelayThreshold } =
-    useNonEVMBigAmountDelay(receiveAmount);
-  const { maxPeggedTokenAmount, setMaxPeggedTokenAmount } = useMaxPeggedTokenAmount();
+
+  const {
+    nonEVMBigAmountDelayed,
+    nonEVMDelayTimeInMinute,
+    nonEVMDelayThreshold,
+  } = useNonEVMBigAmountDelay(receiveAmount);
+  const { maxPeggedTokenAmount, setMaxPeggedTokenAmount } =
+    useMaxPeggedTokenAmount();
   const [noTokenOnDst, setNoTokenOnDst] = useState(false);
   const [userBalance, setUserBalance] = useState<string>("0");
   const [denyPeg, setDenyPeg] = useState(false);
@@ -611,28 +668,54 @@ const Transfer: FC = () => {
   const [hasGotAllowance, setHasGotAllowance] = useState(false);
   const [hasShowGotAllowance, setHasShowGotAllowance] = useState(false);
   const { supportTokenList } = useTransferSupportedTokenList();
-  const { nonEVMMode, flowConnected, terraConnected, nonEVMConnected, nonEVMAddress, setFlowInToChain } =
-    useNonEVMContext();
+  const {
+    nonEVMMode,
+    flowConnected,
+    terraConnected,
+    defichainConnected,
+    nonEVMConnected,
+    nonEVMAddress,
+    setFlowInToChain,
+  } = useNonEVMContext();
   const [terraUSTNotEnough, setTerraUSTNotEnough] = useState(false);
 
   // when bridge from nonevm chain to evm chain, if the evm wallet not connected,
   // user must to input the evm wallet address.
-  const [nonEVMRecipientAddress, setNonEVMRecipientAddress] = useState<string>("");
+  const [nonEVMRecipientAddress, setNonEVMRecipientAddress] =
+    useState<string>("");
   const [flowAccountInitialized, setFlowAccountInitialized] = useState(false);
-  const [nonEVMTokenBalance] = useNonEVMTokenBalance(nonEVMMode, nonEVMAddress, nonEVMConnected, selectedToken);
-  const [coMinterBurnContractAddress, setCoMinterBurnContractAddress] = useState<string>();
-  const [coMinterPegTokenAddress, setCoMinterPegTokenAddress] = useState<string>();
-  const [coMinterExceedBurnCap, setCoMinterExceedBurnCap] = useState<BigNumber>();
+  const [nonEVMTokenBalance] = useNonEVMTokenBalance(
+    nonEVMMode,
+    nonEVMAddress,
+    nonEVMConnected,
+    selectedToken
+  );
+  const [coMinterBurnContractAddress, setCoMinterBurnContractAddress] =
+    useState<string>();
+  const [coMinterPegTokenAddress, setCoMinterPegTokenAddress] =
+    useState<string>();
+  const [coMinterExceedBurnCap, setCoMinterExceedBurnCap] =
+    useState<BigNumber>();
   const [tokenBound, setTokenBound] = useState("");
   const [wrapTokenCap, setWrapTokenCap] = useState<WrapTokenCaps | undefined>();
 
   const getTokenByChainAndTokenSymbol = (chainId, tokenSymbol) => {
-    return transferConfig?.chain_token[chainId]?.token.find(tokenInfo => tokenInfo?.token?.symbol === tokenSymbol);
+    return transferConfig?.chain_token[chainId]?.token.find(
+      (tokenInfo) => tokenInfo?.token?.symbol === tokenSymbol
+    );
   };
 
-  const { coMinterCapCallback } = useCoMinterCaps(coMinterPegTokenAddress, coMinterBurnContractAddress, fromChain?.id);
+  const { coMinterCapCallback } = useCoMinterCaps(
+    coMinterPegTokenAddress,
+    coMinterBurnContractAddress,
+    fromChain?.id
+  );
 
-  const { onWrapTokenLiquidityCallback } = useIsWrapTokenTransferAtLimit(fromChain, toChain, selectedToken);
+  const { onWrapTokenLiquidityCallback } = useIsWrapTokenTransferAtLimit(
+    fromChain,
+    toChain,
+    selectedToken
+  );
 
   useMemo(() => {
     if (!coMinterCapCallback || !amount || !coMinterPegTokenAddress) {
@@ -672,63 +755,26 @@ const Transfer: FC = () => {
     loadWrapLiquidityThredshold();
   }, [onWrapTokenLiquidityCallback]);
 
-  const getAllowance = useCallback(() => {
-    let multiBurnConfigConditionFailure = false;
-    if (multiBurnConfig) {
-      if (multiBurnConfig.burn_config_as_org.canonical_token_contract_addr.length === 0) {
-        multiBurnConfigConditionFailure = multiBurnConfig.burn_config_as_org.burn_contract_addr !== spenderAddr;
-      } else {
-        multiBurnConfigConditionFailure =
-          multiBurnConfig.burn_config_as_org.canonical_token_contract_addr !== spenderAddr;
-      }
-    }
-    if (
-      !tokenContract ||
-      !address ||
-      !spenderAddr ||
-      fromChain?.id !== chainId ||
-      multiBurnConfigConditionFailure ||
-      (pegConfig.mode === PeggedChainMode.Off &&
-        multiBurnConfig === undefined &&
-        fromChain.contract_addr !== spenderAddr) ||
-      (pegConfig.mode === PeggedChainMode.Deposit && pegConfig.config.pegged_deposit_contract_addr !== spenderAddr) ||
-      (pegConfig.mode === PeggedChainMode.Burn && pegConfig.config.pegged_burn_contract_addr !== spenderAddr) ||
-      (pegConfig.mode === PeggedChainMode.BurnThenSwap &&
-        pegConfig.config.pegged_token.token.address !== spenderAddr) ||
-      tokenContract.address !== tokenAddress
-    ) {
-      setApproveLoading(false);
-      return;
-    }
-    tokenContract
-      ?.allowance(address, spenderAddr)
-      .then(result => {
-        setAllowance(result);
-        setHasGotAllowance(true);
-        setApproveLoading(false);
-      })
-      .catch(e => {
-        console.log(e);
-        setHasGotAllowance(true);
-        setApproveLoading(false);
-      });
-  }, [address, tokenContract, spenderAddr, fromChain, chainId, pegConfig, tokenAddress]);
-
   const setTokenMethod = (symbol?: string) => {
     if (!supportTokenList) {
       return;
     }
 
     const targetToken: TokenInfo =
-      supportTokenList.find(token => {
-        return (token.token.display_symbol ?? getTokenListSymbol(token.token.symbol, fromChain?.id ?? 0)) === symbol;
+      supportTokenList.find((token) => {
+        return (
+          (token.token.display_symbol ??
+            getTokenListSymbol(token.token.symbol, fromChain?.id ?? 0)) ===
+          symbol
+        );
       }) || supportTokenList[0];
 
     dispatch(setSelectedToken(targetToken));
     dispatch(
       setSelectedTokenSymbol(
-        targetToken?.token.display_symbol ?? getTokenListSymbol(targetToken?.token.symbol, chainId),
-      ),
+        targetToken?.token.display_symbol ??
+          getTokenListSymbol(targetToken?.token.symbol, chainId)
+      )
     );
     toggleIsTokenShow();
     setAmount("");
@@ -779,34 +825,47 @@ const Transfer: FC = () => {
     );
   };
 
-  const bigAmountDelayedMsg = (tokenSymbol: string, minutes: string, threshold) => {
+  const bigAmountDelayedMsg = (
+    tokenSymbol: string,
+    minutes: string,
+    threshold
+  ) => {
     return (
       <div style={{ display: "inline-flex" }}>
-        <div className="warningInnerbody" style={{ display: "inline-flex", margin: "8px 0px 8px 12px" }}>
+        <div
+          className="warningInnerbody"
+          style={{ display: "inline-flex", margin: "8px 0px 8px 12px" }}
+        >
           <WarningFilled style={{ fontSize: 20, marginRight: 10 }} />
         </div>
         <div style={{ display: "inline", margin: "8px 0px" }}>
-          <span className="msgInnerbody" style={{ display: "inline", margin: "0px" }}>
+          <span
+            className="msgInnerbody"
+            style={{ display: "inline", margin: "0px" }}
+          >
             {`Transfer of more than ${threshold} ${tokenSymbol} takes`}
           </span>
           <span
             className="msgInnerbody"
-            style={{ display: "inline", margin: "0px 4px", color: "#17171A", fontWeight: "bold" }}
+            style={{
+              display: "inline",
+              margin: "0px 4px",
+              color: "#17171A",
+              fontWeight: "bold",
+            }}
           >
             {`up to ${minutes} minutes`}
           </span>
-          <span className="msgInnerbody" style={{ display: "inline", margin: "0px 12px 0px 0px" }}>
+          <span
+            className="msgInnerbody"
+            style={{ display: "inline", margin: "0px 12px 0px 0px" }}
+          >
             to complete.
           </span>
         </div>
       </div>
     );
   };
-
-  // get Allowance
-  useEffect(() => {
-    getAllowance();
-  }, [getAllowance]);
 
   // setSpenderAddr
   useEffect(() => {
@@ -822,7 +881,9 @@ const Transfer: FC = () => {
   // Highlight current token when first loaded.
   useEffect(() => {
     const tokenSymbol =
-      (selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token.symbol, chainId)) || "";
+      (selectedToken?.token?.display_symbol ??
+        getTokenListSymbol(selectedToken?.token.symbol, chainId)) ||
+      "";
     dispatch(setSelectedTokenSymbol(tokenSymbol));
   }, [isTokenShow]);
 
@@ -849,10 +910,10 @@ const Transfer: FC = () => {
 
     bridge
       ?.minSend(selectedToken.token.address)
-      .then(res => {
+      .then((res) => {
         setMinSendValue(res);
       })
-      .catch(e => {
+      .catch((e) => {
         console.log(e);
       });
   }, [selectedToken, bridge]);
@@ -862,11 +923,6 @@ const Transfer: FC = () => {
     setNoTokenOnDst(false);
     setMaxPeggedTokenAmount(undefined);
     setExceedsSafeguard(false);
-    if (isNonEVMChain(fromChain?.id ?? 0)) {
-      setNonEVMRecipientAddress(address);
-    } else if (isNonEVMChain(toChain?.id ?? 0)) {
-      setNonEVMRecipientAddress(nonEVMAddress);
-    }
   }, [pegConfig]);
 
   // After close history modal, need to estimateAmt
@@ -883,11 +939,21 @@ const Transfer: FC = () => {
     } else {
       balance =
         fromChain?.id === chainId
-          ? formatDecimal(isNativeToken ? ETHBalance : tokenBalance, selectedToken?.token?.decimal)
+          ? formatDecimal(
+              isNativeToken ? ETHBalance : tokenBalance,
+              selectedToken?.token?.decimal
+            )
           : "0";
     }
     setUserBalance(balance);
-  }, [tokenBalance, ETHBalance, isNativeToken, nonEVMTokenBalance, fromChain, selectedToken]);
+  }, [
+    tokenBalance,
+    ETHBalance,
+    isNativeToken,
+    nonEVMTokenBalance,
+    fromChain,
+    selectedToken,
+  ]);
 
   // clear error info
   const clearError = () => {
@@ -896,12 +962,12 @@ const Transfer: FC = () => {
     setExceedsSafeguard(false); // reset safeguard check
   };
 
-  const handleError = errorMsgParam => {
+  const handleError = (errorMsgParam) => {
     setHasError(true);
     setErrorMsg(errorMsgParam);
   };
 
-  const handleWarning = warningMsgParam => {
+  const handleWarning = (warningMsgParam) => {
     setErrorMsg(warningMsgParam);
   };
 
@@ -913,7 +979,10 @@ const Transfer: FC = () => {
   const errorProcessor = {
     isOffline(networkState) {
       if (!networkState.online) {
-        return generateErrMsg(`Network error. Please check your Internet connection.`, "CloseCircleFilled");
+        return generateErrMsg(
+          `Network error. Please check your Internet connection.`,
+          "CloseCircleFilled"
+        );
       }
       return undefined;
     },
@@ -921,8 +990,11 @@ const Transfer: FC = () => {
       if (!tokenEnabled) {
         return generateErrMsg(
           `${
-            selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token?.symbol, fromChain?.id)
-          } transfer from ${fromChain?.name} to ${toChain?.name} is not yet supported.`,
+            selectedToken?.token?.display_symbol ??
+            getTokenListSymbol(selectedToken?.token?.symbol, fromChain?.id)
+          } transfer from ${fromChain?.name} to ${
+            toChain?.name
+          } is not yet supported.`
         );
       }
       return undefined;
@@ -931,8 +1003,11 @@ const Transfer: FC = () => {
       if (denyPeg) {
         return generateErrMsg(
           `${
-            selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token?.symbol, fromChain?.id)
-          } transfer from ${fromChain?.name} to ${toChain?.name} is not yet supported.`,
+            selectedToken?.token?.display_symbol ??
+            getTokenListSymbol(selectedToken?.token?.symbol, fromChain?.id)
+          } transfer from ${fromChain?.name} to ${
+            toChain?.name
+          } is not yet supported.`
         );
       }
       return undefined;
@@ -941,7 +1016,7 @@ const Transfer: FC = () => {
       if (noTokenOnDst) {
         return generateErrMsg(
           `Insufficient liquidity on ${toChain?.name}. You may reduce your transfer amount.`,
-          "CloseCircleFilled",
+          "CloseCircleFilled"
         );
       }
       return undefined;
@@ -961,9 +1036,16 @@ const Transfer: FC = () => {
         return (
           <div
             className="errInnerbody"
-            style={{ margin: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+            style={{
+              margin: "8px 12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
           >
-            <WarningFilled style={{ fontSize: 20, marginRight: 5, color: "#ff8f00" }} />
+            <WarningFilled
+              style={{ fontSize: 20, marginRight: 5, color: "#ff8f00" }}
+            />
             <span style={{ color: "#17171A", marginTop: 3 }}>
               You must switch to{" "}
               {isMobile ? (
@@ -973,9 +1055,13 @@ const Transfer: FC = () => {
                   href="#aaa"
                   style={{ fontWeight: "bold" }}
                   onClick={() => {
-                    switchChain(fromChain.id, selectedToken, (targetFromChainId: number) => {
-                      console.log(`switched chain to ${targetFromChainId}`);
-                    });
+                    switchChain(
+                      fromChain.id,
+                      selectedToken,
+                      (targetFromChainId: number) => {
+                        console.log(`switched chain to ${targetFromChainId}`);
+                      }
+                    );
                   }}
                 >
                   {fromChain?.name}{" "}
@@ -996,22 +1082,41 @@ const Transfer: FC = () => {
     },
     isAmountParseError(amount, selectedToken) {
       try {
-        safeParseUnits(Number(amount).toString(), selectedToken?.token?.decimal);
+        safeParseUnits(
+          Number(amount).toString(),
+          selectedToken?.token?.decimal
+        );
       } catch {
-        return generateErrMsg(`The input amount is too small or exceeds the maximum.`);
+        return generateErrMsg(
+          `The input amount is too small or exceeds the maximum.`
+        );
       }
       return undefined;
     },
-    isValueGtMaxAmount(maxPeggedTokenAmount, amount, selectedToken, fromChain, toChain) {
+    isValueGtMaxAmount(
+      maxPeggedTokenAmount,
+      amount,
+      selectedToken,
+      fromChain,
+      toChain
+    ) {
       const maxAmount = maxPeggedTokenAmount;
-      const value = safeParseUnits(Number(amount).toString(), selectedToken?.token?.decimal) || BigNumber.from(0);
+      const value =
+        safeParseUnits(
+          Number(amount).toString(),
+          selectedToken?.token?.decimal
+        ) || BigNumber.from(0);
       if (maxAmount && value.gt(maxAmount)) {
         return generateErrMsg(
-          `At this moment, you can transfer up to ${formatDecimal(maxAmount, selectedToken?.token?.decimal, 2)} 
+          `At this moment, you can transfer up to ${formatDecimal(
+            maxAmount,
+            selectedToken?.token?.decimal,
+            2
+          )} 
         ${getTokenSymbol(selectedToken?.token?.symbol, toChain?.id)} from
         ${fromChain?.name} to ${toChain?.name}. 
         You may reduce your transfer amount or try again later.`,
-          "CloseCircleFilled",
+          "CloseCircleFilled"
         );
       }
       return undefined;
@@ -1022,47 +1127,100 @@ const Transfer: FC = () => {
       }
       return undefined;
     },
-    isValueGtBalance(amount, selectedToken, isNativeToken, ETHBalance, tokenBalance) {
-      const value = safeParseUnits(Number(amount).toString(), selectedToken?.token?.decimal ?? 18) || BigNumber.from(0);
+    isValueGtBalance(
+      amount,
+      selectedToken,
+      isNativeToken,
+      ETHBalance,
+      tokenBalance
+    ) {
+      const value =
+        safeParseUnits(
+          Number(amount).toString(),
+          selectedToken?.token?.decimal ?? 18
+        ) || BigNumber.from(0);
       if (isNonEVMChain(fromChain?.id ?? 0)) {
-        return Number(amount) > nonEVMTokenBalance ? generateErrMsg(`Insufficient balance.`) : undefined;
+        return Number(amount) > nonEVMTokenBalance
+          ? generateErrMsg(`Insufficient balance.`)
+          : undefined;
       }
       if (value.gt(isNativeToken ? ETHBalance : tokenBalance)) {
         return generateErrMsg(`Insufficient balance.`);
       }
       return undefined;
     },
-    isValueLteMinSendValue(amount, selectedToken, minSendValue, estimateAmtInfoInState, fromChain) {
-      const value = safeParseUnits(Number(amount).toString(), selectedToken?.token?.decimal ?? 18) || BigNumber.from(0);
-      const minsendNum = Number(formatDecimal(minSendValue, selectedToken?.token?.decimal).split(",").join(""));
-      if (minSendValue && value.lte(minSendValue) && Number(amount) > 0 && estimateAmtInfoInState) {
+    isValueLteMinSendValue(
+      amount,
+      selectedToken,
+      minSendValue,
+      estimateAmtInfoInState,
+      fromChain
+    ) {
+      const value =
+        safeParseUnits(
+          Number(amount).toString(),
+          selectedToken?.token?.decimal ?? 18
+        ) || BigNumber.from(0);
+      const minsendNum = Number(
+        formatDecimal(minSendValue, selectedToken?.token?.decimal)
+          .split(",")
+          .join("")
+      );
+      if (
+        minSendValue &&
+        value.lte(minSendValue) &&
+        Number(amount) > 0 &&
+        estimateAmtInfoInState
+      ) {
         return generateErrMsg(
           `The transfer amount must be greater than ${minsendNum} ${getTokenSymbol(
             selectedToken?.token?.symbol,
-            fromChain?.id,
-          )}.`,
+            fromChain?.id
+          )}.`
         );
       }
       return undefined;
     },
-    isValueGtSafeguardMaxAmount(amount, selectedToken, estimateAmtInfoInState, safeguardMaxAmount, fromChain) {
-      const value = safeParseUnits(Number(amount).toString(), selectedToken?.token?.decimal ?? 18) || BigNumber.from(0);
+    isValueGtSafeguardMaxAmount(
+      amount,
+      selectedToken,
+      estimateAmtInfoInState,
+      safeguardMaxAmount,
+      fromChain
+    ) {
+      const value =
+        safeParseUnits(
+          Number(amount).toString(),
+          selectedToken?.token?.decimal ?? 18
+        ) || BigNumber.from(0);
       const fromChainNonEVMMode = getNonEVMMode(fromChain?.id ?? 0);
 
       if (estimateAmtInfoInState && safeguardMaxAmount) {
-        const formatedAmount = formatUnits(safeguardMaxAmount!.toString(), selectedToken?.token.decimal);
+        const formatedAmount = formatUnits(
+          safeguardMaxAmount!.toString(),
+          selectedToken?.token.decimal
+        );
         let valueExceeds = false;
         let errorDescription = ``;
-        if (fromChainNonEVMMode === NonEVMMode.flowMainnet || fromChainNonEVMMode === NonEVMMode.flowTest) {
+        if (
+          fromChainNonEVMMode === NonEVMMode.flowMainnet ||
+          fromChainNonEVMMode === NonEVMMode.flowTest
+        ) {
           valueExceeds = value.gte(safeguardMaxAmount);
           errorDescription = `The transfer amount should be less than
             ${deleteDecimalPart(formatedAmount.toString())}
-            ${getTokenSymbol(selectedToken?.token.symbol, fromChain?.id)}. Please reduce your transfer amount.`;
+            ${getTokenSymbol(
+              selectedToken?.token.symbol,
+              fromChain?.id
+            )}. Please reduce your transfer amount.`;
         } else {
           valueExceeds = value.gt(safeguardMaxAmount);
           errorDescription = `The maximum transfer amount is
           ${deleteDecimalPart(formatedAmount.toString())}
-          ${getTokenSymbol(selectedToken?.token.symbol, fromChain?.id)}. Please reduce your transfer amount.`;
+          ${getTokenSymbol(
+            selectedToken?.token.symbol,
+            fromChain?.id
+          )}. Please reduce your transfer amount.`;
         }
 
         if (valueExceeds) {
@@ -1072,7 +1230,12 @@ const Transfer: FC = () => {
       }
       return undefined;
     },
-    isRecipientAddressInputInValid(amount, nonEVMRecipientAddress, nonEVMMode, toChain) {
+    isRecipientAddressInputInValid(
+      amount,
+      nonEVMRecipientAddress,
+      nonEVMMode,
+      toChain
+    ) {
       if (nonEVMMode === NonEVMMode.off) {
         return undefined;
       }
@@ -1080,28 +1243,45 @@ const Transfer: FC = () => {
         return undefined;
       }
       const toChainEVMMode = getNonEVMMode(toChain?.id ?? 0);
-      if (toChainEVMMode === NonEVMMode.flowTest || toChainEVMMode === NonEVMMode.flowMainnet) {
+      if (
+        toChainEVMMode === NonEVMMode.flowTest ||
+        toChainEVMMode === NonEVMMode.flowMainnet
+      ) {
         return undefined;
-      } else if (toChainEVMMode === NonEVMMode.terraMainnet || toChainEVMMode === NonEVMMode.terraTest) {
+      } else if (toChainEVMMode === NonEVMMode.defichainMainnet) {
+        setNonEVMRecipientAddress(nonEVMRecipientAddress);
+        return undefined;
+      } else if (
+        toChainEVMMode === NonEVMMode.terraMainnet ||
+        toChainEVMMode === NonEVMMode.terraTest
+      ) {
         if (AccAddress.validate(nonEVMRecipientAddress)) {
+          console.log("l1326: Non EVM Address set:", nonEVMRecipientAddress);
           setNonEVMRecipientAddress(nonEVMRecipientAddress);
           return undefined;
         }
         return generateErrMsg(
           `Please enter a valid recipient address on
-              ${toChain?.name}`,
+              ${toChain?.name}`
         );
       }
 
       const addressInputWithout0x = nonEVMRecipientAddress.replace("0x", "");
 
-      if (addressInputWithout0x.match(/^[0-9a-f]+$/i) && addressInputWithout0x.length === 40) {
+      if (
+        addressInputWithout0x.match(/^[0-9a-f]+$/i) &&
+        addressInputWithout0x.length === 40
+      ) {
+        console.log(
+          "l1342: Non EVM Address set:",
+          "0x" + addressInputWithout0x
+        );
         setNonEVMRecipientAddress("0x" + addressInputWithout0x);
         return undefined;
       }
       return generateErrMsg(
         `Please enter a valid recipient address on
-            ${toChain?.name}`,
+            ${toChain?.name}`
       );
     },
     isTerraUSTNotEnough(terraUSTNotEnough) {
@@ -1116,12 +1296,15 @@ const Transfer: FC = () => {
           `At this moment, you can transfer up to ${formatDecimal(
             coMinterExceedBurnCap,
             pegConfig.config.pegged_token?.token?.decimal,
-            2,
+            2
           )} 
-        ${getTokenSymbol(pegConfig.config.pegged_token?.token?.symbol, toChain?.id)} from
+        ${getTokenSymbol(
+          pegConfig.config.pegged_token?.token?.symbol,
+          toChain?.id
+        )} from
         ${fromChain?.name} to ${toChain?.name}. 
         You may reduce your transfer amount or try again later.`,
-          "CloseCircleFilled",
+          "CloseCircleFilled"
         );
       }
       return undefined;
@@ -1131,42 +1314,56 @@ const Transfer: FC = () => {
       const inboundLmtBigNumber = BigNumber.from(token?.inbound_lmt || 0)
         .mul(9)
         .div(10);
-      const amountBigNumber = parseUnits(amount.toString() || "0", token?.token?.decimal);
+      const amountBigNumber = parseUnits(
+        amount.toString() || "0",
+        token?.token?.decimal
+      );
       if (
         token?.inbound_lmt !== "" &&
         tokenBoundBigNumber.abs().gt(0) &&
         tokenBoundBigNumber.add(amountBigNumber).gt(inboundLmtBigNumber)
       ) {
         let remainingTransferAmt = inboundLmtBigNumber.sub(tokenBoundBigNumber);
-        remainingTransferAmt = remainingTransferAmt.gt(0) ? remainingTransferAmt : BigNumber.from("0");
+        remainingTransferAmt = remainingTransferAmt.gt(0)
+          ? remainingTransferAmt
+          : BigNumber.from("0");
         return generateErrMsg(
           `You can transfer up to ${formatDecimal(
             remainingTransferAmt.toString(),
             token?.token?.decimal,
-            6,
-          )} ${getTokenSymbol(token?.token?.symbol, toChain?.id)} from ${fromChain?.name} to ${
+            6
+          )} ${getTokenSymbol(token?.token?.symbol, toChain?.id)} from ${
+            fromChain?.name
+          } to ${
             toChain?.name
           } at this moment. You may reduce your transfer amount.
         `,
-          "CloseCircleFilled",
+          "CloseCircleFilled"
         );
       }
     },
     isExcceedWrapTokenLiquidityThredshold(
       wrapTokenCap: WrapTokenCaps | undefined,
       fromChain: Chain | undefined,
-      toChain: Chain | undefined,
+      toChain: Chain | undefined
     ) {
       if (wrapTokenCap) {
-        const threshold = BigNumber.from(wrapTokenCap.totalLiquidity) ?? BigNumber.from("0");
-        const value = safeParseUnits(Number(amount).toString(), wrapTokenCap.decimal) || BigNumber.from(0);
+        const threshold =
+          BigNumber.from(wrapTokenCap.totalLiquidity) ?? BigNumber.from("0");
+        const value =
+          safeParseUnits(Number(amount).toString(), wrapTokenCap.decimal) ||
+          BigNumber.from(0);
         if (threshold.gt("0") && value.gt(threshold)) {
           return generateErrMsg(
-            `At this moment, you can transfer up to ${formatDecimal(threshold, wrapTokenCap.decimal, 2)} 
+            `At this moment, you can transfer up to ${formatDecimal(
+              threshold,
+              wrapTokenCap.decimal,
+              2
+            )} 
           ${getTokenSymbol(wrapTokenCap.tokenSymbol, toChain?.id)} from
           ${fromChain?.name} to ${toChain?.name}. 
           You may reduce your transfer amount or try again later.`,
-            "CloseCircleFilled",
+            "CloseCircleFilled"
           );
         }
       }
@@ -1183,17 +1380,27 @@ const Transfer: FC = () => {
       selectedToken,
       toChain,
       delayMinutes,
-      delayThresholds,
+      delayThresholds
     ) {
-      if (isBigAmountDelayed && estimateAmtInfoInState && !exceedsSafeguard && !loading) {
-        const tokenSymbol = getTokenSymbol(selectedToken?.token?.symbol, toChain?.id);
+      if (
+        isBigAmountDelayed &&
+        estimateAmtInfoInState &&
+        !exceedsSafeguard &&
+        !loading
+      ) {
+        const tokenSymbol = getTokenSymbol(
+          selectedToken?.token?.symbol,
+          toChain?.id
+        );
         return bigAmountDelayedMsg(tokenSymbol, delayMinutes, delayThresholds);
       }
       return undefined;
     },
     isBridgeRateTooSmall(bridgeRate) {
       if (bridgeRate < 0.9) {
-        return generateWaringMsg("The current bridge rate for your transfer is low. Please proceed with caution.");
+        return generateWaringMsg(
+          "The current bridge rate for your transfer is low. Please proceed with caution."
+        );
       }
       return undefined;
     },
@@ -1205,11 +1412,23 @@ const Transfer: FC = () => {
       selectedToken,
       toChain,
       nonEVMDelayTimeInMinute,
-      nonEVMDelayThreshold,
+      nonEVMDelayThreshold
     ) {
-      if (nonEVMBigAmountDelayed && estimateAmtInfoInState && !exceedsSafeguard && !loading) {
-        const tokenSymbol = getTokenSymbol(selectedToken?.token?.symbol, toChain?.id);
-        return bigAmountDelayedMsg(tokenSymbol, nonEVMDelayTimeInMinute, nonEVMDelayThreshold);
+      if (
+        nonEVMBigAmountDelayed &&
+        estimateAmtInfoInState &&
+        !exceedsSafeguard &&
+        !loading
+      ) {
+        const tokenSymbol = getTokenSymbol(
+          selectedToken?.token?.symbol,
+          toChain?.id
+        );
+        return bigAmountDelayedMsg(
+          tokenSymbol,
+          nonEVMDelayTimeInMinute,
+          nonEVMDelayThreshold
+        );
       }
       return undefined;
     },
@@ -1225,7 +1444,12 @@ const Transfer: FC = () => {
         return;
       }
       const errorInfo =
-        errorProcessor.isTokenNotEnable(tokenEnabled, selectedToken, fromChain, toChain) ||
+        errorProcessor.isTokenNotEnable(
+          tokenEnabled,
+          selectedToken,
+          fromChain,
+          toChain
+        ) ||
         errorProcessor.isDenyPeg(denyPeg, selectedToken, fromChain, toChain) ||
         errorProcessor.isNoTokenOnDstChain(noTokenOnDst, toChain) ||
         errorProcessor.isFromChainSameAsDstChain(fromChain, toChain) ||
@@ -1233,36 +1457,65 @@ const Transfer: FC = () => {
         errorProcessor.isAmountInvalid(amount) ||
         errorProcessor.isAmountParseError(amount, selectedToken) ||
         errorProcessor.isFeeGtAmount(fee, amount) ||
-        errorProcessor.isValueGtBalance(amount, selectedToken, isNativeToken, ETHBalance, tokenBalance) ||
-        errorProcessor.isValueGtMaxAmount(maxPeggedTokenAmount, amount, selectedToken, fromChain, toChain) ||
-        errorProcessor.isValueLteMinSendValue(amount, selectedToken, minSendValue, estimateAmtInfoInState, fromChain) ||
-        errorProcessor.isExcceedWrapTokenLiquidityThredshold(wrapTokenCap, fromChain, toChain) ||
+        errorProcessor.isValueGtBalance(
+          amount,
+          selectedToken,
+          isNativeToken,
+          ETHBalance,
+          tokenBalance
+        ) ||
+        errorProcessor.isValueGtMaxAmount(
+          maxPeggedTokenAmount,
+          amount,
+          selectedToken,
+          fromChain,
+          toChain
+        ) ||
+        errorProcessor.isValueLteMinSendValue(
+          amount,
+          selectedToken,
+          minSendValue,
+          estimateAmtInfoInState,
+          fromChain
+        ) ||
+        errorProcessor.isExcceedWrapTokenLiquidityThredshold(
+          wrapTokenCap,
+          fromChain,
+          toChain
+        ) ||
         errorProcessor.isValueGtSafeguardMaxAmount(
           amount,
           selectedToken,
           estimateAmtInfoInState,
           safeguardMaxAmount,
-          fromChain,
+          fromChain
         ) ||
         errorProcessor.isExcceedCoMinterCap(coMinterExceedBurnCap) ||
         errorProcessor.isInboundLimit(tokenBound, selectedToken, amount) ||
-        errorProcessor.isRecipientAddressInputInValid(amount, nonEVMRecipientAddress, nonEVMMode, toChain) ||
+        errorProcessor.isRecipientAddressInputInValid(
+          amount,
+          nonEVMRecipientAddress,
+          nonEVMMode,
+          toChain
+        ) ||
         errorProcessor.isTerraUSTNotEnough(terraUSTNotEnough);
       if (errorInfo) {
         handleError(errorInfo);
       } else {
         const warningInfo =
           warningProcessor.isBigAmountDelayed(
-            isBigAmountDelayed,
+            false,
             estimateAmtInfoInState,
             exceedsSafeguard,
             loading,
             selectedToken,
             toChain,
-            delayMinutes,
-            delayThresholds,
+            "",
+            ""
           ) ||
-          warningProcessor.isBridgeRateTooSmall(estimateAmtInfoInState?.bridgeRate) ||
+          warningProcessor.isBridgeRateTooSmall(
+            estimateAmtInfoInState?.bridgeRate
+          ) ||
           warningProcessor.isNonEVMBigAmountDelayed(
             nonEVMBigAmountDelayed,
             estimateAmtInfoInState,
@@ -1271,7 +1524,7 @@ const Transfer: FC = () => {
             selectedToken,
             toChain,
             nonEVMDelayTimeInMinute,
-            nonEVMDelayThreshold,
+            nonEVMDelayThreshold
           );
         if (warningInfo) {
           handleWarning(warningInfo);
@@ -1294,7 +1547,6 @@ const Transfer: FC = () => {
     selectedToken,
     isNativeToken,
     ETHBalance,
-    isBigAmountDelayed,
     pegConfig,
     noTokenOnDst,
     receiveAmount,
@@ -1313,13 +1565,17 @@ const Transfer: FC = () => {
   const renderCardSetting = () => {
     return (
       <div
-        onClick={e => {
+        onClick={(e) => {
           e.stopPropagation();
           handleOpenRateModal();
         }}
         style={{ cursor: "pointer", position: "relative" }}
       >
-        <img src={settingIcon} className={classes.settingIcon} alt="setting icon" />
+        <img
+          src={settingIcon}
+          className={classes.settingIcon}
+          alt="setting icon"
+        />
         {showRateModal && (
           <RateModal
             onCancle={() => {
@@ -1331,7 +1587,7 @@ const Transfer: FC = () => {
     );
   };
 
-  const showChain = type => {
+  const showChain = (type) => {
     dispatch(setChainSource(type));
     dispatch(setIsChainShow(true));
   };
@@ -1356,7 +1612,9 @@ const Transfer: FC = () => {
     isDenyPeg(toChain) {
       setDenyPeg(false);
       if (PeggedChainMode.Off !== pegConfig.mode && toChain && selectedToken) {
-        const toChainPeggedTokenList = getNetworkById(toChain.id).tokenSymbolList;
+        const toChainPeggedTokenList = getNetworkById(
+          toChain.id
+        ).tokenSymbolList;
         if (!toChainPeggedTokenList.includes(selectedToken.token.symbol)) {
           setDenyPeg(true);
           return true;
@@ -1365,13 +1623,16 @@ const Transfer: FC = () => {
     },
     isAmountParseError(amount, selectedToken) {
       try {
-        safeParseUnits(Number(amount).toString(), selectedToken?.token?.decimal);
+        safeParseUnits(
+          Number(amount).toString(),
+          selectedToken?.token?.decimal
+        );
       } catch {
         return true;
       }
     },
     isNoTokenSupported(selectedToken) {
-      const canToken = supportTokenList.find(item => {
+      const canToken = supportTokenList.find((item) => {
         return item.token.symbol === selectedToken?.token.symbol;
       });
       return canToken === undefined;
@@ -1384,45 +1645,79 @@ const Transfer: FC = () => {
     originalTokenVaultV2,
     peggedTokenBridge,
     peggedTokenBridgeV2,
-    bridge,
+    bridge
   ) => {
+    console.log(
+      pegConfig,
+      originalTokenVault,
+      originalTokenVaultV2,
+      peggedTokenBridge,
+      peggedTokenBridgeV2,
+      bridge
+    );
     let maxT = BigNumber.from(0);
     let minAmt = BigNumber.from(0);
     let maxAmt = BigNumber.from(0);
 
     const fromChainNonEVMMode = getNonEVMMode(fromChain?.id ?? 0);
     const toChainNonEVMMode = getNonEVMMode(toChain?.id ?? 0);
-    const isDstChainIsFlow = toChainNonEVMMode === NonEVMMode.flowTest || toChainNonEVMMode === NonEVMMode.flowMainnet;
+    const isDstChainIsFlow =
+      toChainNonEVMMode === NonEVMMode.flowTest ||
+      toChainNonEVMMode === NonEVMMode.flowMainnet;
     const isDstChainIsTerra =
-      toChainNonEVMMode === NonEVMMode.terraTest || toChainNonEVMMode === NonEVMMode.terraMainnet;
+      toChainNonEVMMode === NonEVMMode.terraTest ||
+      toChainNonEVMMode === NonEVMMode.terraMainnet;
+
+    const isSrcChainDefichain =
+      fromChainNonEVMMode === NonEVMMode.defichainMainnet;
+
+    const isDstChainDefichain =
+      toChainNonEVMMode === NonEVMMode.defichainMainnet;
 
     if (multiBurnConfig) {
-      if (fromChainNonEVMMode === NonEVMMode.flowTest || fromChainNonEVMMode === NonEVMMode.flowMainnet) {
+      if (
+        fromChainNonEVMMode === NonEVMMode.flowTest ||
+        fromChainNonEVMMode === NonEVMMode.flowMainnet
+      ) {
         const tokenConfig = await burnConfigFromFlow(
           multiBurnConfig.burn_config_as_org.burn_contract_addr,
-          selectedToken?.token.address ?? "",
+          selectedToken?.token.address ?? ""
         );
-        minAmt = safeParseUnits(tokenConfig.minBurn.toString(), selectedToken?.token.decimal ?? 8);
-        maxAmt = safeParseUnits(tokenConfig.maxBurn.toString(), selectedToken?.token.decimal ?? 8);
-      } else if (fromChainNonEVMMode === NonEVMMode.terraTest || fromChainNonEVMMode === NonEVMMode.terraMainnet) {
+        minAmt = safeParseUnits(
+          tokenConfig.minBurn.toString(),
+          selectedToken?.token.decimal ?? 8
+        );
+        maxAmt = safeParseUnits(
+          tokenConfig.maxBurn.toString(),
+          selectedToken?.token.decimal ?? 8
+        );
+      } else if (
+        fromChainNonEVMMode === NonEVMMode.terraTest ||
+        fromChainNonEVMMode === NonEVMMode.terraMainnet
+      ) {
         const minAmtObject = await queryTerraMinBurn(
           multiBurnConfig.burn_config_as_org.burn_contract_addr,
-          multiBurnConfig.burn_config_as_org.token.token.address,
+          multiBurnConfig.burn_config_as_org.token.token.address
         );
         minAmt = BigNumber.from(minAmtObject);
         const maxAmtObject = await queryTerraMaxBurn(
           multiBurnConfig.burn_config_as_org.burn_contract_addr,
-          multiBurnConfig.burn_config_as_org.token.token.address,
+          multiBurnConfig.burn_config_as_org.token.token.address
         );
         maxAmt = BigNumber.from(maxAmtObject);
       } else if (peggedTokenBridgeV2) {
-        let evmTokenAddress = multiBurnConfig.burn_config_as_org.token.token.address;
+        let evmTokenAddress =
+          multiBurnConfig.burn_config_as_org.token.token.address;
         minAmt = await peggedTokenBridgeV2.minBurn(evmTokenAddress);
         maxAmt = await peggedTokenBridgeV2.maxBurn(evmTokenAddress);
 
         if (fromChain && coMinterChains.includes(fromChain.id)) {
-          setCoMinterBurnContractAddress(multiBurnConfig.burn_config_as_org.burn_contract_addr);
-          setCoMinterPegTokenAddress(multiBurnConfig.burn_config_as_org.token.token.address);
+          setCoMinterBurnContractAddress(
+            multiBurnConfig.burn_config_as_org.burn_contract_addr
+          );
+          setCoMinterPegTokenAddress(
+            multiBurnConfig.burn_config_as_org.token.token.address
+          );
         }
       }
 
@@ -1430,30 +1725,40 @@ const Transfer: FC = () => {
       if (isDstChainIsFlow) {
         const tokenConfigForDst = await burnConfigFromFlow(
           multiBurnConfig.burn_config_as_dst.burn_contract_addr,
-          multiBurnConfig.burn_config_as_dst.token.token.address,
+          multiBurnConfig.burn_config_as_dst.token.token.address
         );
-        maxT = safeParseUnits(tokenConfigForDst.cap.toString(), selectedToken?.token.decimal ?? 8);
+        maxT = safeParseUnits(
+          tokenConfigForDst.cap.toString(),
+          selectedToken?.token.decimal ?? 8
+        );
       } else if (isDstChainIsTerra) {
         const maxTObject = await queryTerraEpochVolumeCaps(
           multiBurnConfig.burn_config_as_dst.burn_contract_addr,
-          multiBurnConfig.burn_config_as_dst.token.token.address,
+          multiBurnConfig.burn_config_as_dst.token.token.address
         );
         maxT = BigNumber.from(maxTObject).mul(98).div(100);
       } else {
-        const toChainProvider = new JsonRpcProvider(getRpcUrlByChainId(toChain?.id ?? 0));
+        const toChainProvider = new JsonRpcProvider(
+          getRpcUrlByChainId(toChain?.id ?? 0)
+        );
         const dstPeggedTokenBridge = await readOnlyContract(
           toChainProvider,
           multiBurnConfig.burn_config_as_dst.burn_contract_addr,
           multiBurnConfig.burn_config_as_dst.burn_contract_version > 0
             ? PeggedTokenBridgeV2__factory
-            : PeggedTokenBridge__factory,
+            : PeggedTokenBridge__factory
         );
 
         if (dstPeggedTokenBridge) {
-          maxT = await dstPeggedTokenBridge.epochVolumeCaps(multiBurnConfig.burn_config_as_dst.token.token.address);
+          maxT = await dstPeggedTokenBridge.epochVolumeCaps(
+            multiBurnConfig.burn_config_as_dst.token.token.address
+          );
           maxT = safeParseUnits(
-            formatUnits(maxT, multiBurnConfig.burn_config_as_dst.token.token.decimal),
-            multiBurnConfig.burn_config_as_org.token.token.decimal,
+            formatUnits(
+              maxT,
+              multiBurnConfig.burn_config_as_dst.token.token.decimal
+            ),
+            multiBurnConfig.burn_config_as_org.token.token.decimal
           );
           maxT = maxT.mul(98).div(100);
         }
@@ -1474,27 +1779,43 @@ const Transfer: FC = () => {
       }
       return;
     }
+    // END MULTIBURNCONIG
 
     switch (pegConfig.mode) {
       case PeggedChainMode.Deposit:
-        if (fromChainNonEVMMode === NonEVMMode.flowTest || fromChainNonEVMMode === NonEVMMode.flowMainnet) {
+        if (
+          fromChainNonEVMMode === NonEVMMode.flowTest ||
+          fromChainNonEVMMode === NonEVMMode.flowMainnet
+        ) {
           const tokenConfig = await depositConfigFromFlow(
             pegConfig.config.pegged_deposit_contract_addr,
-            selectedToken?.token.address ?? "",
+            selectedToken?.token.address ?? ""
           );
-          minAmt = safeParseUnits(tokenConfig.minDepo.toString(), selectedToken?.token.decimal ?? 8);
-          maxAmt = safeParseUnits(tokenConfig.maxDepo.toString(), selectedToken?.token.decimal ?? 8);
-        } else if (fromChainNonEVMMode === NonEVMMode.terraTest || fromChainNonEVMMode === NonEVMMode.terraMainnet) {
+          minAmt = safeParseUnits(
+            tokenConfig.minDepo.toString(),
+            selectedToken?.token.decimal ?? 8
+          );
+          maxAmt = safeParseUnits(
+            tokenConfig.maxDepo.toString(),
+            selectedToken?.token.decimal ?? 8
+          );
+        } else if (
+          fromChainNonEVMMode === NonEVMMode.terraTest ||
+          fromChainNonEVMMode === NonEVMMode.terraMainnet
+        ) {
           const minAmtObject = await queryTerraMinDeposit(
             pegConfig.config.pegged_deposit_contract_addr,
-            pegConfig.config.org_token.token.address,
+            pegConfig.config.org_token.token.address
           );
           minAmt = BigNumber.from(minAmtObject);
           const maxAmtObject = await queryTerraMaxDeposit(
             pegConfig.config.pegged_deposit_contract_addr,
-            pegConfig.config.org_token.token.address,
+            pegConfig.config.org_token.token.address
           );
           maxAmt = BigNumber.from(maxAmtObject);
+        } else if (fromChainNonEVMMode === NonEVMMode.defichainMainnet) {
+          minAmt = BigNumber.from(1);
+          maxAmt = BigNumber.from(0);
         } else if (originalTokenVault || originalTokenVaultV2) {
           const vaultV2Contract = originalTokenVaultV2 ?? originalTokenVault;
           let evmTokenAddress = pegConfig.config.org_token.token.address;
@@ -1510,28 +1831,39 @@ const Transfer: FC = () => {
         if (isDstChainIsFlow) {
           const tokenConfigForDst = await burnConfigFromFlow(
             pegConfig.config.pegged_burn_contract_addr,
-            pegConfig.config.pegged_token.token.address,
+            pegConfig.config.pegged_token.token.address
           );
-          maxT = safeParseUnits(tokenConfigForDst.cap.toString(), selectedToken?.token.decimal ?? 8);
+          maxT = safeParseUnits(
+            tokenConfigForDst.cap.toString(),
+            selectedToken?.token.decimal ?? 8
+          );
         } else if (isDstChainIsTerra) {
           const maxTObject = await queryTerraEpochVolumeCaps(
             pegConfig.config.pegged_burn_contract_addr,
-            pegConfig.config.pegged_token.token.address,
+            pegConfig.config.pegged_token.token.address
           );
           maxT = BigNumber.from(maxTObject).mul(98).div(100);
+        } else if (isDstChainDefichain) {
+          maxT = BigNumber.from(0);
         } else {
-          const toChainProvider = new JsonRpcProvider(getRpcUrlByChainId(toChain?.id ?? 0));
+          const toChainProvider = new JsonRpcProvider(
+            getRpcUrlByChainId(toChain?.id ?? 0)
+          );
           const dstPeggedTokenBridge = await readOnlyContract(
             toChainProvider,
             pegConfig.config.pegged_burn_contract_addr,
-            pegConfig.config.bridge_version > 0 ? PeggedTokenBridgeV2__factory : PeggedTokenBridge__factory,
+            pegConfig.config.bridge_version > 0
+              ? PeggedTokenBridgeV2__factory
+              : PeggedTokenBridge__factory
           );
 
           if (dstPeggedTokenBridge) {
-            maxT = await dstPeggedTokenBridge.epochVolumeCaps(pegConfig.config.pegged_token.token.address);
+            maxT = await dstPeggedTokenBridge.epochVolumeCaps(
+              pegConfig.config.pegged_token.token.address
+            );
             maxT = safeParseUnits(
               formatUnits(maxT, pegConfig.config.pegged_token.token.decimal),
-              pegConfig.config.org_token.token.decimal,
+              pegConfig.config.org_token.token.decimal
             );
             maxT = maxT.mul(98).div(100);
           }
@@ -1540,22 +1872,34 @@ const Transfer: FC = () => {
         break;
       case PeggedChainMode.Burn:
       case PeggedChainMode.BurnThenSwap:
-        if (fromChainNonEVMMode === NonEVMMode.flowTest || fromChainNonEVMMode === NonEVMMode.flowMainnet) {
+        if (
+          fromChainNonEVMMode === NonEVMMode.flowTest ||
+          fromChainNonEVMMode === NonEVMMode.flowMainnet
+        ) {
           const tokenConfig = await burnConfigFromFlow(
             pegConfig.config.pegged_burn_contract_addr,
-            selectedToken?.token.address ?? "",
+            selectedToken?.token.address ?? ""
           );
-          minAmt = safeParseUnits(tokenConfig.minBurn.toString(), selectedToken?.token.decimal ?? 8);
-          maxAmt = safeParseUnits(tokenConfig.maxBurn.toString(), selectedToken?.token.decimal ?? 8);
-        } else if (fromChainNonEVMMode === NonEVMMode.terraTest || fromChainNonEVMMode === NonEVMMode.terraMainnet) {
+          minAmt = safeParseUnits(
+            tokenConfig.minBurn.toString(),
+            selectedToken?.token.decimal ?? 8
+          );
+          maxAmt = safeParseUnits(
+            tokenConfig.maxBurn.toString(),
+            selectedToken?.token.decimal ?? 8
+          );
+        } else if (
+          fromChainNonEVMMode === NonEVMMode.terraTest ||
+          fromChainNonEVMMode === NonEVMMode.terraMainnet
+        ) {
           const minAmtObject = await queryTerraMinBurn(
             pegConfig.config.pegged_burn_contract_addr,
-            pegConfig.config.pegged_token.token.address,
+            pegConfig.config.pegged_token.token.address
           );
           minAmt = BigNumber.from(minAmtObject);
           const maxAmtObject = await queryTerraMaxBurn(
             pegConfig.config.pegged_burn_contract_addr,
-            pegConfig.config.pegged_token.token.address,
+            pegConfig.config.pegged_token.token.address
           );
           maxAmt = BigNumber.from(maxAmtObject);
         } else if (peggedTokenBridge || peggedTokenBridgeV2) {
@@ -1569,36 +1913,49 @@ const Transfer: FC = () => {
           maxAmt = await pegBridge.maxBurn(evmTokenAddress);
 
           if (fromChain && coMinterChains.includes(fromChain.id)) {
-            setCoMinterBurnContractAddress(pegConfig.config.pegged_burn_contract_addr);
-            setCoMinterPegTokenAddress(pegConfig.config.pegged_token.token.address);
+            setCoMinterBurnContractAddress(
+              pegConfig.config.pegged_burn_contract_addr
+            );
+            setCoMinterPegTokenAddress(
+              pegConfig.config.pegged_token.token.address
+            );
           }
         }
 
         if (isDstChainIsFlow) {
           const tokenConfigForDst = await depositConfigFromFlow(
             pegConfig.config.pegged_deposit_contract_addr,
-            pegConfig.config.org_token.token.address,
+            pegConfig.config.org_token.token.address
           );
-          maxT = safeParseUnits(tokenConfigForDst.cap.toString(), selectedToken?.token.decimal ?? 8);
+          maxT = safeParseUnits(
+            tokenConfigForDst.cap.toString(),
+            selectedToken?.token.decimal ?? 8
+          );
         } else if (isDstChainIsTerra) {
           const maxTObject = await queryTerraEpochVolumeCaps(
             pegConfig.config.pegged_deposit_contract_addr,
-            pegConfig.config.org_token.token.address,
+            pegConfig.config.org_token.token.address
           );
           maxT = BigNumber.from(maxTObject).mul(98).div(100);
         } else {
-          const toChainProvider = new JsonRpcProvider(getRpcUrlByChainId(toChain?.id ?? 0));
+          const toChainProvider = new JsonRpcProvider(
+            getRpcUrlByChainId(toChain?.id ?? 0)
+          );
           const dstOriginalTokenVault = await readOnlyContract(
             toChainProvider,
             pegConfig.config.pegged_deposit_contract_addr,
-            pegConfig.config.vault_version > 0 ? OriginalTokenVaultV2__factory : OriginalTokenVault__factory,
+            pegConfig.config.vault_version > 0
+              ? OriginalTokenVaultV2__factory
+              : OriginalTokenVault__factory
           );
 
           if (dstOriginalTokenVault) {
-            maxT = await dstOriginalTokenVault.epochVolumeCaps(pegConfig.config.org_token.token.address);
+            maxT = await dstOriginalTokenVault.epochVolumeCaps(
+              pegConfig.config.org_token.token.address
+            );
             maxT = safeParseUnits(
               formatUnits(maxT, pegConfig.config.org_token.token.decimal),
-              pegConfig.config.pegged_token.token.decimal,
+              pegConfig.config.pegged_token.token.decimal
             );
             maxT = maxT.mul(98).div(100);
           }
@@ -1607,17 +1964,28 @@ const Transfer: FC = () => {
         break;
       default:
         if (bridge) {
-          const toChainProvider = new JsonRpcProvider(getRpcUrlByChainId(toChain?.id ?? 0));
+          const toChainProvider = new JsonRpcProvider(
+            getRpcUrlByChainId(toChain?.id ?? 0)
+          );
           maxAmt = await bridge.maxSend(selectedToken?.token?.address ?? "");
-          const dstBridge = await readOnlyContract(toChainProvider, toChain?.contract_addr ?? "", Bridge__factory);
-          const dstToken = transferConfig.chain_token[toChain?.id ?? 0].token.find(tokenInfo => {
+          const dstBridge = await readOnlyContract(
+            toChainProvider,
+            toChain?.contract_addr ?? "",
+            Bridge__factory
+          );
+          const dstToken = transferConfig.chain_token[
+            toChain?.id ?? 0
+          ].token.find((tokenInfo) => {
             return tokenInfo.token.symbol === selectedToken?.token?.symbol;
           })?.token;
           const dstTokenAddress = dstToken?.address;
 
           if (dstBridge) {
             maxT = await dstBridge.epochVolumeCaps(dstTokenAddress ?? "");
-            maxT = safeParseUnits(formatUnits(maxT, dstToken?.decimal), selectedToken?.token.decimal ?? 18);
+            maxT = safeParseUnits(
+              formatUnits(maxT, dstToken?.decimal),
+              selectedToken?.token.decimal ?? 18
+            );
             maxT = maxT.mul(98).div(100);
           }
         }
@@ -1639,42 +2007,27 @@ const Transfer: FC = () => {
     }
   };
 
-  const estimateAmt = async (selectedFromChain, selectedToChain, targetToken, value, addr, rate) => {
-    const mode = GetPeggedMode(
-      fromChain?.id,
-      toChain?.id,
-      targetToken.token.symbol,
-      transferConfig.pegged_pair_configs,
-    );
-    const estimateRequest = new EstimateAmtRequest();
-    estimateRequest.setSrcChainId(selectedFromChain.id);
-    estimateRequest.setDstChainId(selectedToChain.id);
-    estimateRequest.setTokenSymbol(targetToken?.token.symbol);
-    estimateRequest.setAmt(value.toString());
-    estimateRequest.setUsrAddr(addr);
-    estimateRequest.setSlippageTolerance(Number(rate) * 10000);
-    estimateRequest.setIsPegged(mode !== PeggedChainMode.Off || multiBurnConfig !== undefined);
-
-    const client = new WebClient(`${process.env.REACT_APP_GRPC_SERVER_URL}`, null, null);
-
-    const res = await client.estimateAmt(estimateRequest, null);
-    return res;
-  };
-
   const estimateAmtResProcessor = (res, targetToken) => {
-    if (!res?.getErr()) {
-      dispatch(setEstimateAmtInfoInState(res.toObject()));
-      const feeBigNum = BigNumber.from(res?.getBaseFee()).add(BigNumber.from(res?.getPercFee()));
+    if (res.status === 1) {
+      dispatch(setEstimateAmtInfoInState(res));
+      const feeBigNum = BigNumber.from(res.result.absolute_fee).add(
+        BigNumber.from(res.result.network_fee)
+      );
       const totalFee = feeBigNum.toString() || "0";
       const tgas = Number(
-        formatDecimal(totalFee, getTokenByChainAndTokenSymbol(toChain?.id, targetToken?.token?.symbol)?.token.decimal)
+        formatDecimal(
+          totalFee,
+          getTokenByChainAndTokenSymbol(toChain?.id, targetToken?.token?.symbol)
+            ?.token.decimal
+        )
           ?.split(",")
-          .join(""),
+          .join("")
       );
-      const targetReceiveAmounts = res.getEstimatedReceiveAmt();
+      const targetReceiveAmounts = res.result.value;
       const receiveAmounts = formatDecimal(
         targetReceiveAmounts,
-        getTokenByChainAndTokenSymbol(toChain?.id, targetToken?.token?.symbol)?.token.decimal,
+        getTokenByChainAndTokenSymbol(toChain?.id, targetToken?.token?.symbol)
+          ?.token.decimal
       )
         ?.split(",")
         .join("");
@@ -1689,7 +2042,9 @@ const Transfer: FC = () => {
       ) {
         setTokenEnabled(false);
       }
-      if (response.err?.code === ErrCode.ERROR_CODE_NO_ENOUGH_TOKEN_ON_DST_CHAIN) {
+      if (
+        response.err?.code === ErrCode.ERROR_CODE_NO_ENOUGH_TOKEN_ON_DST_CHAIN
+      ) {
         setNoTokenOnDst(true);
       } else {
         setNoTokenOnDst(false);
@@ -1701,10 +2056,10 @@ const Transfer: FC = () => {
   };
 
   const debounceFn = useCallback(
-    debounce(callback => {
+    debounce((callback) => {
       callback();
     }, 1000),
-    [],
+    []
   );
 
   useEffect(() => {
@@ -1723,7 +2078,7 @@ const Transfer: FC = () => {
         peggedTokenBridge,
         peggedTokenBridgeV2,
         bridge,
-      }),
+      })
     );
   }, [
     fromChain,
@@ -1756,6 +2111,7 @@ const Transfer: FC = () => {
     peggedTokenBridgeV2,
     bridge,
   }) => {
+    console.log("UL: newGetRelayNodeInfo(address=" + address + ")");
     const cannotEstimat =
       estimateErrorProcessor.isOffLine(networkState) ||
       estimateErrorProcessor.isTokenNotEnable(amount) ||
@@ -1766,23 +2122,50 @@ const Transfer: FC = () => {
       setLoading(false);
       return;
     }
+
+    if (isNonEVMChain(toChain?.id ?? 0)) {
+      console.log("Non EVM Address set:", nonEVMAddress, "dormant", address);
+      setNonEVMRecipientAddress(nonEVMAddress);
+    } else {
+      console.log("EVM Address set:", address, "dormant", nonEVMAddress);
+      setNonEVMRecipientAddress(address);
+    }
+
     if (Number(amount) > 0) {
       setLoading(true);
       try {
-        await safeguardTask(
+        console.log("UL: safeGuardTask() begin");
+        /* UL: await safeguardTask(
           pegConfig,
           originalTokenVault,
           originalTokenVaultV2,
           peggedTokenBridge,
           peggedTokenBridgeV2,
-          bridge,
-        );
-        const value = safeParseUnits(amount || "0", selectedToken?.token?.decimal);
-        const res = await estimateAmt(fromChain, toChain, selectedToken, value, address, rate);
+          bridge
+        ); */
+
         const fromChainNonEVMMode = getNonEVMMode(fromChain?.id ?? 0);
+        const toChainNonEVMMode = getNonEVMMode(toChain?.id ?? 0);
+
+        console.log("UL: safeGuardTask() end");
+        const value = safeParseUnits(
+          amount || "0",
+          selectedToken?.token?.decimal
+        );
+
+        console.log("UL: estimateAmt()");
+        const res = await customOverrideEstimateAmt(
+          fromChain,
+          toChain,
+          selectedToken,
+          value,
+          address,
+          rate
+        );
         if (
           terraConnected &&
-          (fromChainNonEVMMode === NonEVMMode.terraMainnet || fromChainNonEVMMode === NonEVMMode.terraTest)
+          (fromChainNonEVMMode === NonEVMMode.terraMainnet ||
+            fromChainNonEVMMode === NonEVMMode.terraTest)
         ) {
           const terraCoins = await terraNativeBalances(nonEVMAddress);
           const ustCoin = terraCoins.get("uusd");
@@ -1797,6 +2180,7 @@ const Transfer: FC = () => {
           }
         }
         setLoading(false);
+        console.log("UL: estimateAmtResProcessor()");
         estimateAmtResProcessor(res, selectedToken);
       } catch (e) {
         console.log("getRelayNodeInfo error:", e);
@@ -1817,7 +2201,10 @@ const Transfer: FC = () => {
     }
 
     if (isNonEVMChain(fromChain?.id ?? 0)) {
-      const maxSend = formatDecimalPart(`${nonEVMTokenBalance}`, selectedToken?.token.decimal);
+      const maxSend = formatDecimalPart(
+        `${nonEVMTokenBalance}`,
+        selectedToken?.token.decimal
+      );
 
       if (!maxSend) {
         return;
@@ -1837,8 +2224,17 @@ const Transfer: FC = () => {
     }
 
     const balance = isNativeToken ? ETHBalance : tokenBalance;
-    let maxShow = formatDecimal(balance.toString(), selectedToken?.token?.decimal).split(",").join("");
-    let maxSen = formatDecimal(balance.toString(), selectedToken?.token?.decimal, selectedToken?.token?.decimal)
+    let maxShow = formatDecimal(
+      balance.toString(),
+      selectedToken?.token?.decimal
+    )
+      .split(",")
+      .join("");
+    let maxSen = formatDecimal(
+      balance.toString(),
+      selectedToken?.token?.decimal,
+      selectedToken?.token?.decimal
+    )
       ?.split(",")
       .join("");
 
@@ -1896,9 +2292,12 @@ const Transfer: FC = () => {
     const paramChainId = paramChain.id;
     const nonEVMMode = getNonEVMMode(paramChainId);
 
-    if (nonEVMMode === NonEVMMode.flowMainnet || nonEVMMode === NonEVMMode.flowTest) {
+    if (
+      nonEVMMode === NonEVMMode.flowMainnet ||
+      nonEVMMode === NonEVMMode.flowTest
+    ) {
       if (flowConnected) {
-        const chain = transferConfig.chains.find(chainInfo => {
+        const chain = transferConfig.chains.find((chainInfo) => {
           return chainInfo.id === paramChainId;
         });
         if (chain !== undefined) {
@@ -1908,9 +2307,12 @@ const Transfer: FC = () => {
         dispatch(openModal(ModalName.flowProvider));
       }
       return;
-    } else if (nonEVMMode === NonEVMMode.terraMainnet || nonEVMMode === NonEVMMode.terraTest) {
+    } else if (
+      nonEVMMode === NonEVMMode.terraMainnet ||
+      nonEVMMode === NonEVMMode.terraTest
+    ) {
       if (terraConnected) {
-        const chain = transferConfig.chains.find(chainInfo => {
+        const chain = transferConfig.chains.find((chainInfo) => {
           return chainInfo.id === paramChainId;
         });
         if (chain !== undefined) {
@@ -1920,10 +2322,13 @@ const Transfer: FC = () => {
         dispatch(openModal(ModalName.terraProvider));
       }
       return;
+    } else if (nonEVMMode === NonEVMMode.defichainMainnet) {
+      // no need to switch chain
+      return;
     }
 
     switchChain(paramChain.id, paramToken, (chainId: number) => {
-      const chain = transferConfig.chains.find(chainInfo => {
+      const chain = transferConfig.chains.find((chainInfo) => {
         return chainInfo.id === chainId;
       });
       if (chain !== undefined) {
@@ -1981,9 +2386,15 @@ const Transfer: FC = () => {
 
   const showWalletConnectionProviderModal = useCallback(() => {
     const fromChainNonEVMMode = getNonEVMMode(fromChain?.id ?? 0);
-    if (fromChainNonEVMMode === NonEVMMode.flowMainnet || fromChainNonEVMMode === NonEVMMode.flowTest) {
+    if (
+      fromChainNonEVMMode === NonEVMMode.flowMainnet ||
+      fromChainNonEVMMode === NonEVMMode.flowTest
+    ) {
       dispatch(openModal(ModalName.flowProvider));
-    } else if (fromChainNonEVMMode === NonEVMMode.terraMainnet || fromChainNonEVMMode === NonEVMMode.terraTest) {
+    } else if (
+      fromChainNonEVMMode === NonEVMMode.terraMainnet ||
+      fromChainNonEVMMode === NonEVMMode.terraTest
+    ) {
       dispatch(openModal(ModalName.terraProvider));
     } else {
       dispatch(openModal(ModalName.provider));
@@ -1993,10 +2404,16 @@ const Transfer: FC = () => {
   const showNonEVMProviderModalForToChain = useCallback(() => {
     const toChainNonEVMMode = getNonEVMMode(toChain?.id ?? 0);
 
-    if (toChainNonEVMMode === NonEVMMode.flowMainnet || toChainNonEVMMode === NonEVMMode.flowTest) {
+    if (
+      toChainNonEVMMode === NonEVMMode.flowMainnet ||
+      toChainNonEVMMode === NonEVMMode.flowTest
+    ) {
       setFlowInToChain();
       dispatch(openModal(ModalName.flowProvider));
-    } else if (toChainNonEVMMode === NonEVMMode.terraMainnet || toChainNonEVMMode === NonEVMMode.terraTest) {
+    } else if (
+      toChainNonEVMMode === NonEVMMode.terraMainnet ||
+      toChainNonEVMMode === NonEVMMode.terraTest
+    ) {
       dispatch(openModal(ModalName.terraProvider));
     }
   }, [dispatch, toChain]);
@@ -2020,13 +2437,16 @@ const Transfer: FC = () => {
       setApproveLoading(true);
       try {
         if (fromChain && isApeChain(fromChain.id)) {
-          const approveTx = await transactor(tokenContract.approve(spenderAddr, MaxUint256, { gasPrice: 0 }));
+          const approveTx = await transactor(
+            tokenContract.approve(spenderAddr, MaxUint256, { gasPrice: 0 })
+          );
           await approveTx.wait();
         } else {
-          const approveTx = await transactor(tokenContract.approve(spenderAddr, MaxUint256));
+          const approveTx = await transactor(
+            tokenContract.approve(spenderAddr, MaxUint256)
+          );
           await approveTx.wait();
         }
-        getAllowance();
       } catch (e) {
         setApproveLoading(false);
       }
@@ -2040,22 +2460,28 @@ const Transfer: FC = () => {
 
     setCreateFlowBtnLoading(true);
 
-    const flowTokenPath = flowTokenPathConfigs.find(config => {
+    const flowTokenPath = flowTokenPathConfigs.find((config) => {
       return config.Symbol === selectedToken?.token.symbol;
     });
 
     if (flowTokenPath) {
-      setupTokenVaultForFlowAccount(flowTokenPath, nonEVMAddress).then(initialized => {
-        setFlowAccountInitialized(initialized);
-        setCreateFlowBtnLoading(false);
-      });
+      setupTokenVaultForFlowAccount(flowTokenPath, nonEVMAddress).then(
+        (initialized) => {
+          setFlowAccountInitialized(initialized);
+          setCreateFlowBtnLoading(false);
+        }
+      );
     } else {
       setCreateFlowBtnLoading(false);
     }
   };
 
   const amountInputDisabled = () => {
-    if (!getNonEVMMode(fromChain?.id || 0) && chainId > 0 && fromChain?.id != chainId) {
+    if (
+      !getNonEVMMode(fromChain?.id || 0) &&
+      chainId > 0 &&
+      fromChain?.id != chainId
+    ) {
       return true;
     }
     const nonEVMMode = getNonEVMMode(fromChain?.id ?? 0);
@@ -2067,7 +2493,7 @@ const Transfer: FC = () => {
   };
 
   const nonEVMReceiverAddress = () => {
-    if (isNonEVMChain(fromChain?.id ?? 0) || isNonEVMChain(toChain?.id ?? 0)) {
+    if (isNonEVMChain(toChain?.id ?? 0)) {
       return nonEVMRecipientAddress;
     }
     return "";
@@ -2076,18 +2502,20 @@ const Transfer: FC = () => {
   useEffect(() => {
     const check = async () => {
       const toChainMode = getNonEVMMode(toChain?.id ?? 0);
-      const toChainNotFlow = toChainMode != NonEVMMode.flowTest && toChainMode != NonEVMMode.flowMainnet;
+      const toChainNotFlow =
+        toChainMode != NonEVMMode.flowTest &&
+        toChainMode != NonEVMMode.flowMainnet;
       if (toChainNotFlow || nonEVMRecipientAddress.length === 0) {
         return;
       }
 
-      const flowTokenPath = flowTokenPathConfigs.find(config => {
+      const flowTokenPath = flowTokenPathConfigs.find((config) => {
         return config.Symbol === selectedToken?.token.symbol;
       });
 
       const initialized = await checkTokenReceivabilityForFlowAccount(
         nonEVMRecipientAddress,
-        flowTokenPath?.ReceiverPath ?? "",
+        flowTokenPath?.ReceiverPath ?? ""
       );
       setFlowAccountInitialized(initialized);
     };
@@ -2112,35 +2540,36 @@ const Transfer: FC = () => {
   useEffect(() => {
     const check = async () => {
       const fromChainMode = getNonEVMMode(fromChain?.id ?? 0);
-      const fromChainNotFlow = fromChainMode != NonEVMMode.flowTest && fromChainMode != NonEVMMode.flowMainnet;
+      const fromChainNotFlow =
+        fromChainMode != NonEVMMode.flowTest &&
+        fromChainMode != NonEVMMode.flowMainnet;
       if (fromChainNotFlow || nonEVMAddress.length === 0) {
         return;
       }
 
-      const flowTokenPath = flowTokenPathConfigs.find(config => {
+      const flowTokenPath = flowTokenPathConfigs.find((config) => {
         return config.Symbol === selectedToken?.token.symbol;
       });
 
-      const initialized = await checkTokenReceivabilityForFlowAccount(nonEVMAddress, flowTokenPath?.ReceiverPath ?? "");
+      const initialized = await checkTokenReceivabilityForFlowAccount(
+        nonEVMAddress,
+        flowTokenPath?.ReceiverPath ?? ""
+      );
       setFlowAccountInitialized(initialized);
     };
 
     check();
   }, [nonEVMAddress, fromChain, selectedToken]);
 
-  useEffect(() => {
-    if ((flowConnected || terraConnected) && isNonEVMChain(toChain?.id ?? 0) && nonEVMAddress.length > 0) {
-      setNonEVMRecipientAddress(nonEVMAddress);
-    }
-  }, [flowConnected, terraConnected, toChain, nonEVMAddress]);
-
-  const isTransferReady = Number(amount) > 0 && !hasError && receiveAmount && !exceedsSafeguard;
+  const isTransferReady =
+    Number(amount) > 0 && !hasError && receiveAmount && !exceedsSafeguard;
 
   let tempNeedShowCreateFlowVaultBtn =
     flowConnected &&
     !flowAccountInitialized &&
     isTransferReady &&
-    (nonEVMMode === NonEVMMode.flowMainnet || nonEVMMode === NonEVMMode.flowTest);
+    (nonEVMMode === NonEVMMode.flowMainnet ||
+      nonEVMMode === NonEVMMode.flowTest);
   if (tempNeedShowCreateFlowVaultBtn === 0) {
     tempNeedShowCreateFlowVaultBtn = false;
   }
@@ -2151,14 +2580,21 @@ const Transfer: FC = () => {
         type="primary"
         onClick={setupFlowAccountWithLoadingSign}
         loading={createFlowBtnLoading}
-        className={classNames(isMobile ? classes.transMobileBtn : classes.transBtn, classes.createflowBtn)}
+        className={classNames(
+          isMobile ? classes.transMobileBtn : classes.transBtn,
+          classes.createflowBtn
+        )}
       >
         <Tooltip
-          overlayClassName={isMobile ? classes.mobileTooltipOverlayStyle : undefined}
+          overlayClassName={
+            isMobile ? classes.mobileTooltipOverlayStyle : undefined
+          }
           title={`In order to receive ${
-            selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)
+            selectedToken?.token?.display_symbol ??
+            getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)
           } on Flow, you will need to create a ${
-            selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)
+            selectedToken?.token?.display_symbol ??
+            getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)
           }
           vault in your Flow wallet. This does not consume any gas and only needs to be done once per token.`}
           placement="bottomLeft"
@@ -2168,7 +2604,9 @@ const Transfer: FC = () => {
         >
           <InfoCircleOutlined style={{ fontSize: 13, marginLeft: 6 }} />
         </Tooltip>
-        Create {selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)}{" "}
+        Create{" "}
+        {selectedToken?.token?.display_symbol ??
+          getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)}{" "}
         vault in your Flow wallet
       </Button>
     );
@@ -2189,7 +2627,11 @@ const Transfer: FC = () => {
 
     const toChainNonEVMMode = getNonEVMMode(toChain?.id ?? 0);
 
-    if ((toChainNonEVMMode === NonEVMMode.flowMainnet || toChainNonEVMMode === NonEVMMode.flowTest) && !flowConnected) {
+    if (
+      (toChainNonEVMMode === NonEVMMode.flowMainnet ||
+        toChainNonEVMMode === NonEVMMode.flowTest) &&
+      !flowConnected
+    ) {
       return (
         <Button
           type="primary"
@@ -2215,41 +2657,6 @@ const Transfer: FC = () => {
       );
     }
 
-    // if (
-    //   flowConnected &&
-    //   flowAccountInitialized &&
-    //   isTransferReady &&
-    //   (nonEVMMode === NonEVMMode.flowMainnet || nonEVMMode === NonEVMMode.flowTest)
-    // ) {
-    //   return (
-    //     <Button
-    //       type="primary"
-    //       onClick={setupFlowAccountWithLoadingSign}
-    //       loading={loading}
-    //       className={isMobile ? classes.transMobileBtn : classes.transBtn}
-    //     >
-    //       <Tooltip
-    //         overlayClassName={isMobile ? classes.mobileTooltipOverlayStyle : undefined}
-    //         title={`In order to receive ${
-    //           selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)
-    //         } on Flow, you will need to create a ${
-    //           selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)
-    //         }
-    //         vault in your Flow wallet. This does not consume any gas and only needs to be done once per token.`}
-    //         placement="bottomLeft"
-    //         arrowPointAtCenter
-    //         color="#fff"
-    //         overlayInnerStyle={{ color: "#000", width: 265 }}
-    //       >
-    //         <InfoCircleOutlined style={{ fontSize: 13, marginLeft: 6 }} />
-    //       </Tooltip>
-    //       Create{" "}
-    //       {selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)} vault
-    //       in your Flow wallet
-    //     </Button>
-    //   );
-    // }
-
     const needApprove = ((_allowance: BigNumber | undefined) => {
       if (isNativeToken) {
         return false;
@@ -2259,29 +2666,41 @@ const Transfer: FC = () => {
       }
       const inputAmount = amount || "0";
       try {
-        const isGreatThanAllowance = safeParseUnits(inputAmount, selectedToken?.token?.decimal ?? 18).gt(_allowance);
+        const isGreatThanAllowance = safeParseUnits(
+          inputAmount,
+          selectedToken?.token?.decimal ?? 18
+        ).gt(_allowance);
         return isGreatThanAllowance;
       } catch {
         return true;
       }
     })(allowance);
 
-    const findPotentialPeggedConfig = transferConfig.pegged_pair_configs.find(pairConfig => {
-      return (
-        pairConfig.org_chain_id === fromChain?.id &&
-        pairConfig.pegged_chain_id === toChain?.id &&
-        pairConfig.org_token.token.symbol === selectedToken?.token.symbol
-      );
-    });
+    const findPotentialPeggedConfig = transferConfig.pegged_pair_configs.find(
+      (pairConfig) => {
+        return (
+          pairConfig.org_chain_id === fromChain?.id &&
+          pairConfig.pegged_chain_id === toChain?.id &&
+          pairConfig.org_token.token.symbol === selectedToken?.token.symbol
+        );
+      }
+    );
 
     let shouldNotSkipAllowanceCheckForNonEVM = nonEVMMode === NonEVMMode.off;
 
     if (findPotentialPeggedConfig) {
       /// Check allowance when deposit from EVM chain to NonEVM chain
-      shouldNotSkipAllowanceCheckForNonEVM = !isNonEVMChain(findPotentialPeggedConfig.org_chain_id);
+      shouldNotSkipAllowanceCheckForNonEVM = !isNonEVMChain(
+        findPotentialPeggedConfig.org_chain_id
+      );
     }
 
-    if ((needApprove && isTransferReady && shouldNotSkipAllowanceCheckForNonEVM) || hasShowGotAllowance) {
+    if (
+      (needApprove &&
+        isTransferReady &&
+        shouldNotSkipAllowanceCheckForNonEVM) ||
+      hasShowGotAllowance
+    ) {
       if (!hasGotAllowance) {
         return (
           <Button
@@ -2295,7 +2714,9 @@ const Transfer: FC = () => {
         return (
           <div className={classes.buttonBg}>
             {tempNeedShowCreateFlowVaultBtn && renderCreateFlowBtn()}
-            <div className={isMobile ? classes.approveBgMobile : classes.approveBg}>
+            <div
+              className={isMobile ? classes.approveBgMobile : classes.approveBg}
+            >
               <Button
                 type="primary"
                 onClick={approveMethod}
@@ -2304,10 +2725,15 @@ const Transfer: FC = () => {
                 className={classes.approveTransBtn}
               >
                 <Tooltip
-                  overlayClassName={isMobile ? classes.mobileTooltipOverlayStyle : undefined}
+                  overlayClassName={
+                    isMobile ? classes.mobileTooltipOverlayStyle : undefined
+                  }
                   title={`You must give cBridge smart contracts permission to use your ${
                     selectedToken?.token?.display_symbol ??
-                    getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)
+                    getTokenListSymbol(
+                      selectedToken?.token.symbol,
+                      fromChain?.id
+                    )
                   }, which is an on-chain tx that consumes gas. You only have to do this once per token.`}
                   placement="bottomLeft"
                   arrowPointAtCenter
@@ -2317,14 +2743,24 @@ const Transfer: FC = () => {
                   <InfoCircleOutlined style={{ fontSize: 13, marginLeft: 6 }} />
                 </Tooltip>
                 Approve{" "}
-                {selectedToken?.token?.display_symbol ?? getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)}
+                {selectedToken?.token?.display_symbol ??
+                  getTokenListSymbol(
+                    selectedToken?.token.symbol,
+                    fromChain?.id
+                  )}
               </Button>
               <Button
                 type="primary"
                 onClick={onShowTransferModal}
                 loading={loading}
-                className={isMobile ? classes.approveTransBtn : classes.approveTransBtn}
-                disabled={(!isTransferReady && !loading) || needApprove || (tempNeedShowCreateFlowVaultBtn as boolean)}
+                className={
+                  isMobile ? classes.approveTransBtn : classes.approveTransBtn
+                }
+                disabled={
+                  (!isTransferReady && !loading) ||
+                  needApprove ||
+                  (tempNeedShowCreateFlowVaultBtn as boolean)
+                }
               >
                 Transfer
               </Button>
@@ -2341,7 +2777,10 @@ const Transfer: FC = () => {
             onClick={onShowTransferModal}
             loading={loading}
             className={isMobile ? classes.transMobileBtn : classes.transBtn}
-            disabled={(!isTransferReady && !loading) || (tempNeedShowCreateFlowVaultBtn as boolean)}
+            disabled={
+              (!isTransferReady && !loading) ||
+              (tempNeedShowCreateFlowVaultBtn as boolean)
+            }
           >
             Transfer
           </Button>
@@ -2359,26 +2798,29 @@ const Transfer: FC = () => {
     if (amount) {
       const amountBn = safeParseUnits(
         amount,
-        getTokenByChainAndTokenSymbol(toChain?.id, selectedToken?.token?.symbol)?.token.decimal ?? 18,
+        getTokenByChainAndTokenSymbol(toChain?.id, selectedToken?.token?.symbol)
+          ?.token.decimal ?? 18
       );
-      minimumReceivedNum = amountBn.sub(
-        amountBn.mul(BigNumber.from(estimateAmtInfoInState.maxSlippage)).div(millionBigNum),
-      );
+      minimumReceivedNum = amountBn;
 
       if (minimumReceivedNum.lt(0)) {
         minimumReceivedNum = BigNumber.from("0");
       }
     }
-    bridgeRate = estimateAmtInfoInState.bridgeRate;
+    bridgeRate = 1;
 
     minimumReceived =
       formatDecimal(
         minimumReceivedNum || "0",
-        getTokenByChainAndTokenSymbol(toChain?.id, selectedToken?.token?.symbol)?.token.decimal,
+        getTokenByChainAndTokenSymbol(toChain?.id, selectedToken?.token?.symbol)
+          ?.token.decimal
       ) + " ";
   }
 
   const balanceAvailable = (): Boolean => {
+    if (getNonEVMMode(fromChain?.id ?? 0) === NonEVMMode.defichainMainnet) {
+      return false;
+    }
     if (
       getNonEVMMode(fromChain?.id ?? 0) === NonEVMMode.flowTest ||
       getNonEVMMode(fromChain?.id ?? 0) === NonEVMMode.flowMainnet
@@ -2392,13 +2834,24 @@ const Transfer: FC = () => {
   };
 
   const toChainEVMMode = getNonEVMMode(toChain?.id ?? 0);
-  const disableForFlowReceiver = toChainEVMMode === NonEVMMode.flowMainnet || toChainEVMMode === NonEVMMode.flowTest;
+  const disableForFlowReceiver =
+    toChainEVMMode === NonEVMMode.flowMainnet ||
+    toChainEVMMode === NonEVMMode.flowTest;
 
   return (
     <div className={classes.flexCenter}>
+      <img
+        src={BridgeAwesomeLogo}
+        style={{ height: 125 }}
+        alt="Awesome Bridge"
+      />
       <Card className={classes.transferCard} bordered={false}>
         <div className={classes.cardContent}>
-          {fromChain && isApeChain(fromChain.id) && isMobile ? <ApeTip /> : <></>}
+          {fromChain && isApeChain(fromChain.id) && isMobile ? (
+            <ApeTip />
+          ) : (
+            <></>
+          )}
 
           <div className={classes.trans}>
             <div className={classes.transitem}>
@@ -2412,7 +2865,11 @@ const Transfer: FC = () => {
                         showChain("from");
                       }}
                     >
-                      <Avatar size="small" src={fromChain?.icon} style={{ marginRight: 5 }} />
+                      <Avatar
+                        size="small"
+                        src={fromChain?.icon}
+                        style={{ marginRight: 5 }}
+                      />
                       <span style={{ marginRight: 13 }}>{fromChain?.name}</span>
                       <img src={arrowDowm} alt="more from chain" />
                     </div>
@@ -2426,13 +2883,17 @@ const Transfer: FC = () => {
                     return (
                       <div>
                         <div
-                          onClick={e => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             handleOpenRateModal();
                           }}
                           style={{ cursor: "pointer", position: "relative" }}
                         >
-                          <img src={settingIcon} className={classes.settingIcon} alt="setting icon" />
+                          <img
+                            src={settingIcon}
+                            className={classes.settingIcon}
+                            alt="setting icon"
+                          />
                         </div>
                         <Modal
                           className={classes.mobileRateModal}
@@ -2468,7 +2929,8 @@ const Transfer: FC = () => {
                     >
                       Max: <span>{userBalance}</span>
                     </div>
-                  ) : isNonEVMChain(fromChain?.id ?? 0) && (!flowConnected || !flowAccountInitialized) ? (
+                  ) : isNonEVMChain(fromChain?.id ?? 0) &&
+                    (!flowConnected || !flowAccountInitialized) ? (
                     <div className={classes.transnumlimt}>Max: --</div>
                   ) : (
                     ""
@@ -2476,16 +2938,26 @@ const Transfer: FC = () => {
                 </div>
                 <div className={classes.transndes}>
                   <div className={classes.transdestext}>
-                    <TokenInput value={amount} onChange={handleTokenInputChange} disabled={amountInputDisabled()} />
+                    <TokenInput
+                      value={amount}
+                      onChange={handleTokenInputChange}
+                      disabled={amountInputDisabled()}
+                    />
                   </div>
                   <div className={classes.transdeslimt}>
-                    <div className={classes.investSelct} onClick={() => toggleIsTokenShow()}>
+                    <div
+                      className={classes.investSelct}
+                      onClick={() => toggleIsTokenShow()}
+                    >
                       <div className={classes.selectpic}>
                         <img src={selectedToken?.icon} alt="" />
                       </div>
                       <div className={classes.selectdes}>
                         {selectedToken?.token?.display_symbol ??
-                          getTokenListSymbol(selectedToken?.token.symbol, fromChain?.id)}
+                          getTokenListSymbol(
+                            selectedToken?.token.symbol,
+                            fromChain?.id
+                          )}
                       </div>
                       <div className={classes.selecttoog}>
                         <DownOutlined style={{ fontSize: "14px" }} />
@@ -2517,7 +2989,11 @@ const Transfer: FC = () => {
                         showChain("to");
                       }}
                     >
-                      <Avatar size="small" src={toChain?.icon} style={{ marginRight: 5 }} />
+                      <Avatar
+                        size="small"
+                        src={toChain?.icon}
+                        style={{ marginRight: 5 }}
+                      />
                       <span style={{ marginRight: 13 }}>{toChain?.name}</span>
                       <img src={arrowDowm} alt="more to chain" />
                     </div>
@@ -2531,14 +3007,21 @@ const Transfer: FC = () => {
                       <Tooltip
                         title={
                           <div className={classes.transcontenttip}>
-                            This amount is estimated based on the current bridge rate and fees.
+                            This amount is estimated based on the current bridge
+                            rate and fees.
                           </div>
                         }
                         placement="top"
                         color="#fff"
-                        overlayInnerStyle={{ color: "#000", backgroundColor: "#fff", width: 265 }}
+                        overlayInnerStyle={{
+                          color: "#000",
+                          backgroundColor: "#fff",
+                          width: 265,
+                        }}
                       >
-                        <InfoCircleOutlined style={{ fontSize: 12, marginRight: 6 }} />
+                        <InfoCircleOutlined
+                          style={{ fontSize: 12, marginRight: 6 }}
+                        />
                       </Tooltip>
                       Receive (estimated):
                     </div>
@@ -2556,7 +3039,7 @@ const Transfer: FC = () => {
                               selectedToken?.token,
                               fromChain,
                               toChain,
-                              transferConfig.pegged_pair_configs,
+                              transferConfig.pegged_pair_configs
                             )}`}
                       </span>
                     )}
@@ -2570,14 +3053,19 @@ const Transfer: FC = () => {
                 <div style={{ height: 24 }} />
                 <div className={classes.transcontent}>
                   <div className={classes.nonEvmRecipientText}>
-                    Recipient address on {toChain?.name} (do NOT send funds to exchanges)
+                    Recipient address on {toChain?.name} (do NOT send funds to
+                    exchanges)
                   </div>
                   <div className={classes.transndes}>
                     <div className={classes.nonEvmAddressText}>
                       <TokenInput
                         value={nonEVMRecipientAddress}
                         placeholderText="Please enter recipient address"
-                        onChange={e => {
+                        onChange={(e) => {
+                          console.log(
+                            "Setting manually entered Non EVM address:",
+                            e.value
+                          );
                           setNonEVMRecipientAddress(e.value);
                         }}
                         disabled={disableForFlowReceiver}
@@ -2615,22 +3103,31 @@ const Transfer: FC = () => {
           toChain={toChain}
           bridgeRate={bridgeRate}
           minimumReceived={minimumReceived}
-          baseFee={estimateAmtInfoInState?.baseFee}
-          percFee={estimateAmtInfoInState?.percFee}
+          baseFee={(estimateAmtInfoInState as any).result.network_fee}
+          percFee={(estimateAmtInfoInState as any).result.absolute_fee}
           transferConfig={transferConfig}
-          isBigAmountDelayed={isBigAmountDelayed || nonEVMBigAmountDelayed}
-          delayMinutes={isBigAmountDelayed ? delayMinutes : nonEVMBigAmountDelayed ? nonEVMDelayTimeInMinute : ""}
+          isBigAmountDelayed={false}
+          delayMinutes={""}
           estimateAmtInfoInState={estimateAmtInfoInState}
         />
       ) : null}
-      <ProviderModal visible={showProviderModal} onCancel={handleCloseProviderModal} />
-      <FlowProviderModal visible={showFlowProviderModal} onCancel={handleCloseFlowProviderModal} />
-      <TerraProviderModal visible={showTerraProviderModal} onCancel={handleCloseTerraProviderModal} />
+      <ProviderModal
+        visible={showProviderModal}
+        onCancel={handleCloseProviderModal}
+      />
+      <FlowProviderModal
+        visible={showFlowProviderModal}
+        onCancel={handleCloseFlowProviderModal}
+      />
+      <TerraProviderModal
+        visible={showTerraProviderModal}
+        onCancel={handleCloseTerraProviderModal}
+      />
       {showTransferModal && (
         <TransferModal
           amount={maxValue || amount}
           receiveAmount={receiveAmount}
-          nonEVMReceiverAddress={nonEVMReceiverAddress()}
+          nonEVMReceiverAddress={nonEVMRecipientAddress}
           onCancel={handleCloseTransferModal}
           onSuccess={handleSuccess}
         />

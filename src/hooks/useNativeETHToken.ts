@@ -4,9 +4,14 @@ import { useContractsContext } from "../providers/ContractsContextProvider";
 import { useWeb3Context } from "../providers/Web3ContextProvider";
 import { useEthBalance } from ".";
 
-export const useNativeETHToken = (srcChain: Chain | undefined, tokenInfo: TokenInfo | undefined) => {
+export const useNativeETHToken = (
+  srcChain: Chain | undefined,
+  tokenInfo: TokenInfo | undefined
+) => {
   const [isNativeToken, setIsNativeToken] = useState(false);
-  const [tokenDisplayName, setTokenDisplayName] = useState(tokenInfo?.name ?? "");
+  const [tokenDisplayName, setTokenDisplayName] = useState(
+    tokenInfo?.name ?? ""
+  );
 
   const {
     contracts: { bridge },
@@ -26,9 +31,14 @@ export const useNativeETHToken = (srcChain: Chain | undefined, tokenInfo: TokenI
       288, // BOBA,
     ];
     let nativeETHToken = false;
-    if (chainIds.includes(srcChain.id) && tokenInfo.token.display_symbol === "ETH") {
+    if (
+      chainIds.includes(srcChain.id) &&
+      tokenInfo.token.display_symbol === "ETH"
+    ) {
       nativeETHToken = true;
     } else if (srcChain.id === 56 && tokenInfo.token.symbol === "BNB") {
+      nativeETHToken = true;
+    } else if (srcChain.id === 560000 && tokenInfo.token.symbol === "DFI") {
       nativeETHToken = true;
     } else if (srcChain.id === 43114 && tokenInfo.token.symbol === "AVAX") {
       nativeETHToken = true;
@@ -36,7 +46,10 @@ export const useNativeETHToken = (srcChain: Chain | undefined, tokenInfo: TokenI
       nativeETHToken = true;
     } else if (srcChain.id === 336 && tokenInfo.token.symbol === "SDN") {
       nativeETHToken = true;
-    } else if ((srcChain.id === 137 || srcChain.id === 80001) && tokenInfo.token.symbol === "MATIC") {
+    } else if (
+      (srcChain.id === 137 || srcChain.id === 80001) &&
+      tokenInfo.token.symbol === "MATIC"
+    ) {
       nativeETHToken = true;
     } else if (srcChain.id === 57 && tokenInfo.token.symbol === "SYS") {
       nativeETHToken = true;

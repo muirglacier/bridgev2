@@ -8,9 +8,8 @@ import { setIsChainShow, setChainSource } from "../redux/transferSlice";
 import { useWeb3Context } from "../providers/Web3ContextProvider";
 import { Theme } from "../theme/theme";
 import Account from "./Account";
-import cBrdige2Logo from "../images/favicon.png";
-import cBrdige2Light from "../images/cBrdigeLight.svg";
-import cBrdige2Dark from "../images/cBrdigeDark.svg";
+import BridgeAwesomeLogo from "../images/bridge_logo.svg";
+
 import homeHistoryIcon from "../images/homehistory.svg";
 import lightHomeHistory from "../images/lightHomeHistory.svg";
 import unicorn from "../images/unicorn.png";
@@ -21,10 +20,21 @@ import MenuModal from "./MenuModal";
 import { getNetworkById } from "../constants/network";
 import ViewTab from "../components/ViewTab";
 import { useNonEVMContext } from "../providers/NonEVMContextProvider";
-import { FeatureSupported, getSupportedFeatures } from "../utils/featureSupported";
+import {
+  FeatureSupported,
+  getSupportedFeatures,
+} from "../utils/featureSupported";
 /* eslint-disable*/
 
 const useStyles = createUseStyles((theme: Theme) => ({
+  logofont: {
+    fontFamily: "Poppins",
+    fontSize: "20pt",
+    fontStyle: "normal",
+    fontVariant: "normal",
+    fontWeight: "900",
+    color: "white",
+  },
   header: {
     position: "relative",
     display: "flex",
@@ -337,7 +347,11 @@ type HistoryButtonProps = {
   onClick: () => void;
 };
 
-function HistoryButton({ totalActionNum, totalPendingNum, onClick }: HistoryButtonProps) {
+function HistoryButton({
+  totalActionNum,
+  totalPendingNum,
+  onClick,
+}: HistoryButtonProps) {
   const styles = historyButtonStyles();
   const { themeType } = useContext(ColorThemeContext);
   let content;
@@ -345,7 +359,11 @@ function HistoryButton({ totalActionNum, totalPendingNum, onClick }: HistoryButt
     content = (
       <div className={styles.box} onClick={onClick}>
         <div className={styles.titleBox}>
-          <img style={{ maxWidth: "100%", maxHeight: "100%", height: 16 }} src="./unicorn.png" alt="" />
+          <img
+            style={{ maxWidth: "100%", maxHeight: "100%", height: 16 }}
+            src="./unicorn.png"
+            alt=""
+          />
           <span style={{ marginLeft: 2 }}>{`${totalActionNum} Action${
             Number(totalActionNum) !== 1 ? "s" : ""
           } Required`}</span>
@@ -358,7 +376,9 @@ function HistoryButton({ totalActionNum, totalPendingNum, onClick }: HistoryButt
       <div className={styles.box} onClick={onClick}>
         <div className={styles.titleBox}>
           <span>{` ${totalPendingNum} Pending`}</span>
-          <LoadingOutlined style={{ fontSize: 12, marginLeft: 2, color: "#fff" }} />
+          <LoadingOutlined
+            style={{ fontSize: 12, marginLeft: 2, color: "#fff" }}
+          />
         </div>
       </div>
     );
@@ -378,21 +398,24 @@ function HistoryButton({ totalActionNum, totalPendingNum, onClick }: HistoryButt
 }
 
 export default function Header(): JSX.Element {
-  const { isMobile } = useAppSelector(state => state.windowWidth);
+  const { isMobile } = useAppSelector((state) => state.windowWidth);
   const classes = useStyles();
   const [sGNModalState, setSGNModalState] = useState(false);
   const { themeType, toggleTheme } = useContext(ColorThemeContext);
   const { network, signer, chainId } = useWeb3Context();
   const { nonEVMConnected } = useNonEVMContext();
   const dispatch = useAppDispatch();
-  const { totalActionNum, totalPaddingNum, fromChain, tokenList } = useAppSelector(state => state.transferInfo);
+  const { totalActionNum, totalPaddingNum, fromChain, tokenList } =
+    useAppSelector((state) => state.transferInfo);
 
-  const logoUrl = cBrdige2Logo;
-  const biglogoUrl = themeType === "dark" ? cBrdige2Light : cBrdige2Dark;
   const toggleIconUrl = themeType === "dark" ? light : dark;
-  const shouldShowViewTab = getSupportedFeatures() === FeatureSupported.BOTH;
+  const shouldShowViewTab =
+    getSupportedFeatures() === FeatureSupported.BOTH ||
+    getSupportedFeatures() === FeatureSupported.TRANSFERR ||
+    getSupportedFeatures() === FeatureSupported.NFTR ||
+    getSupportedFeatures() === FeatureSupported.BOTHR;
 
-  const showChain = type => {
+  const showChain = (type) => {
     dispatch(setChainSource(type));
     dispatch(setIsChainShow(true));
   };
@@ -406,7 +429,13 @@ export default function Header(): JSX.Element {
     if (totalActionNum) {
       content = (
         <div className={classes.historyIner}>
-          <img className={classes.historyIcon2} width={22} key="1" src={unicorn} alt="" />
+          <img
+            className={classes.historyIcon2}
+            width={22}
+            key="1"
+            src={unicorn}
+            alt=""
+          />
           <span style={{ marginLeft: 30 }}>{`${totalActionNum} Action${
             Number(totalActionNum) !== 1 ? "s" : ""
           } Required`}</span>
@@ -417,7 +446,15 @@ export default function Header(): JSX.Element {
       content = (
         <div className={classes.historyIner}>
           <span>{` ${totalPaddingNum} Pending`}</span>
-          <LoadingOutlined style={{ fontSize: 18, marginRight: 6, fontWeight: 700, marginLeft: 6, color: "#fff" }} />
+          <LoadingOutlined
+            style={{
+              fontSize: 18,
+              marginRight: 6,
+              fontWeight: 700,
+              marginLeft: 6,
+              color: "#fff",
+            }}
+          />
         </div>
       );
     } else {
@@ -444,7 +481,7 @@ export default function Header(): JSX.Element {
     return content;
   };
 
-  const { modal } = useAppSelector(state => state);
+  const { modal } = useAppSelector((state) => state);
   const { showMenuModal } = modal;
   const handleShowMenuModal = useCallback(() => {
     dispatch(openModal(ModalName.menu));
@@ -456,30 +493,18 @@ export default function Header(): JSX.Element {
     return (
       <div className={classes.mobilePageHeaderWrapper}>
         <div className={classes.mobileLogoWrapper}>
-          <img
-            onClick={() => {
-              window.location.reload();
-            }}
-            src={biglogoUrl}
-            height="26px"
-            alt="cBridge"
-            style={{ position: "absolute", left: 15, marginBottom: 2 }}
-          />
-
-          <div className={classes.mobileHeaderPanel} style={{ flex: "1 0 auto" }}>
-            <div style={{ marginRight: 2 }}>
-              {signer && (
-                <HistoryButton
-                  totalActionNum={totalActionNum}
-                  totalPendingNum={totalPaddingNum}
-                  onClick={() => handleOpenHistoryModal()}
-                />
-              )}
-            </div>
+          <div
+            className={classes.mobileHeaderPanel}
+            style={{ flex: "1 0 auto" }}
+          >
             <Account />
             <div className={classes.themeIcon} onClick={toggleTheme}>
               <div style={{ width: 20, height: 20 }}>
-                <img src={toggleIconUrl} style={{ width: "100%", height: "100%" }} alt="protocol icon" />
+                <img
+                  src={toggleIconUrl}
+                  style={{ width: "100%", height: "100%" }}
+                  alt="protocol icon"
+                />
               </div>
             </div>
           </div>
@@ -498,14 +523,7 @@ export default function Header(): JSX.Element {
   return (
     <div className={classes.header}>
       <div className={classes.hleft}>
-        <div className={classes.mobileLogoWrapper}>
-          <img
-            src={biglogoUrl}
-            height="26px"
-            alt="cBridge"
-            style={{ position: "absolute", left: 15, marginBottom: 2 }}
-          />
-        </div>
+        <div className={classes.mobileLogoWrapper}></div>
 
         {shouldShowViewTab && (
           <div className="tabBody">
@@ -515,16 +533,6 @@ export default function Header(): JSX.Element {
       </div>
 
       <div className={classes.headerRight}>
-        <div>
-          <div
-            className={totalActionNum || totalPaddingNum ? classes.activeChainLocale : classes.chainLocale}
-            onClick={() => {
-              handleOpenHistoryModal();
-            }}
-          >
-            <div className={classes.historyText}>{getstatusText()}</div>
-          </div>
-        </div>
         {(signer || nonEVMConnected) && (
           <div
             className="chainLocale"
@@ -553,11 +561,6 @@ export default function Header(): JSX.Element {
           </div>
         )}
         <Account />
-        <div className={classes.themeIcon} onClick={toggleTheme}>
-          <div style={{ width: 20, height: 20 }}>
-            <img src={toggleIconUrl} style={{ width: "100%", height: "100%" }} alt="protocol icon" />
-          </div>
-        </div>
       </div>
     </div>
   );

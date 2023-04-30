@@ -12,5 +12,4 @@ export { default as useTokenBalance } from "./tokenBalance";
 export { default as useWindowWidth } from "./windowWidth";
 export { default as useNonEVMTokenBalance } from "./nonEVMTokenBalance";
 // export { default as getTransferStatus } from "./getTransferStatus";
-export { useBigAmountDelay } from "./useBigAmountDelay";
 export { useNativeETHToken } from "./useNativeETHToken";

@@ -179,6 +179,8 @@ export enum TransferHistoryStatus {
   TRANSFER_CONFIRMING_YOUR_REFUND, // user: mark refund has been submitted on chain
   TRANSFER_REFUNDED, // relayer: on refund(withdraw liquidity actually) tx event
   TRANSFER_DELAYED,
+  DEFICHAIN_STEP_1_MINT,
+  DEFICHAIN_STEP_2_MINT,
 }
 
 interface TransferInfo {
