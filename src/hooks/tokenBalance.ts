@@ -5,13 +5,19 @@ import { ERC20 } from "../typechain/typechain/ERC20";
 
 export type UseBalanceReturn = [BigNumber, boolean, string, () => void];
 
-function useTokenBalance(tokenContract: ERC20 | undefined, address: string, timeout = 3000): UseBalanceReturn {
+function useTokenBalance(
+  tokenContract: ERC20 | undefined,
+  address: string,
+  timeout = 3000
+): UseBalanceReturn {
   const [balance, setBalance] = useState(BigNumber.from(0));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   const [reloadTrigger, reload] = useToggle(false);
 
+  console.log("launching tokenbalance research on address", address);
+  console.log(tokenContract);
   useEffect(() => {
     setError("");
 
@@ -37,7 +43,10 @@ function useTokenBalance(tokenContract: ERC20 | undefined, address: string, time
         setRetryCount(0);
         setBalance(bal);
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => {
+        console.log("tokenbalance encountered error:", err.message);
+        setError(err.message);
+      })
       .finally(() => setLoading(false));
   }, [tokenContract, address, reloadTrigger, timeout]);
 

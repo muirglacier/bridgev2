@@ -129,6 +129,11 @@ import { isApeChain } from "../hooks/useTransfer";
 import { ApeTip } from "./nft/ApeTips";
 import { customOverrideEstimateAmt } from "../utils/customBridgeOverrides";
 import { BigNumber } from "ethers";
+import {
+  Network,
+  validateDefiAddress,
+} from "../utils/customDefichainFunctions";
+import { Maintenance } from "./Maintenance";
 
 /* eslint-disable */
 /* eslint-disable camelcase */
@@ -575,6 +580,20 @@ const useStyles = createUseStyles<string, { isMobile: boolean }, Theme>(
 );
 
 const Transfer: FC = () => {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const url = `${process.env.REACT_APP_DEFICHAIN_BRIDGE_API_URL}`;
+      return fetch(url + "/fees")
+        .then((response) => {
+          setMaintenanceMode(false);
+        })
+        .catch((e) => {
+          setMaintenanceMode(true);
+        });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   const { isMobile } = useAppSelector((state) => state.windowWidth);
   const classes = useStyles({ isMobile });
   const {
@@ -635,6 +654,8 @@ const Transfer: FC = () => {
     address
   );
   const { getRpcUrlByChainId } = useConfigContext();
+  const [maintenanceMode, setMaintenanceMode] = useState<boolean>(false);
+
   const [amount, setAmount] = useState("");
   const [maxValue, setMaxValue] = useState("");
   const [receiveAmount, setReceiveAmount] = useState(0);
@@ -947,6 +968,10 @@ const Transfer: FC = () => {
     nonEVMTokenBalance,
     fromChain,
     selectedToken,
+    nonEVMRecipientAddress,
+    defichainConnected,
+    connected,
+    address,
   ]);
 
   // clear error info
@@ -1138,6 +1163,11 @@ const Transfer: FC = () => {
           ? generateErrMsg(`Insufficient balance.`)
           : undefined;
       }
+      if (isNonEVMChain(toChain?.id ?? 0)) {
+        // TODO: Ugly hack needed for recovery
+
+        return undefined;
+      }
       if (value.gt(isNativeToken ? ETHBalance : tokenBalance)) {
         return generateErrMsg(`Insufficient balance.`);
       }
@@ -1243,8 +1273,18 @@ const Transfer: FC = () => {
       ) {
         return undefined;
       } else if (toChainEVMMode === NonEVMMode.defichainMainnet) {
-        setNonEVMRecipientAddress(nonEVMRecipientAddress);
-        return undefined;
+        if (
+          nonEVMRecipientAddress.length > 0 &&
+          !validateDefiAddress(nonEVMRecipientAddress, Network.mainnet)
+        ) {
+          return generateErrMsg(
+            `Please enter a valid recipient address on
+              ${toChain?.name}`
+          );
+        } else {
+          setNonEVMRecipientAddress(nonEVMRecipientAddress);
+          return undefined;
+        }
       } else if (
         toChainEVMMode === NonEVMMode.terraMainnet ||
         toChainEVMMode === NonEVMMode.terraTest
@@ -2008,6 +2048,11 @@ const Transfer: FC = () => {
         BigNumber.from(res.result.network_fee)
       );
       const totalFee = feeBigNum.toString() || "0";
+      console.log(
+        "resProcessor, digits =",
+        getTokenByChainAndTokenSymbol(toChain?.id, targetToken?.token?.symbol)
+          ?.token.decimal
+      );
       const tgas = Number(
         formatDecimal(
           totalFee,
@@ -2024,6 +2069,8 @@ const Transfer: FC = () => {
         getTokenByChainAndTokenSymbol(toChain?.id, targetToken?.token?.symbol)
           ?.token.decimal
       );
+      console.log("res:");
+      console.log(res);
       const targetReceiveAmounts = res.result.value;
       const receiveAmounts = formatDecimal(
         targetReceiveAmounts,
@@ -2154,7 +2201,10 @@ const Transfer: FC = () => {
           selectedToken?.token?.decimal
         );
 
-        console.log("UL: estimateAmt()");
+        console.log(
+          "UL: estimateAmt(), selTokenDecimal =",
+          selectedToken?.token?.decimal
+        );
         const res = await customOverrideEstimateAmt(
           fromChain,
           toChain,
@@ -2563,7 +2613,12 @@ const Transfer: FC = () => {
   }, [nonEVMAddress, fromChain, selectedToken]);
 
   const isTransferReady =
-    Number(amount) > 0 && !hasError && receiveAmount && !exceedsSafeguard;
+    Number(amount) > 0 &&
+    !hasError &&
+    receiveAmount &&
+    !exceedsSafeguard &&
+    nonEVMRecipientAddress &&
+    nonEVMRecipientAddress.length > 0;
 
   let tempNeedShowCreateFlowVaultBtn =
     flowConnected &&
@@ -2839,312 +2894,317 @@ const Transfer: FC = () => {
     toChainEVMMode === NonEVMMode.flowMainnet ||
     toChainEVMMode === NonEVMMode.flowTest;
 
-  return (
-    <div className={classes.flexCenter}>
-      <img
-        src={BridgeAwesomeLogo}
-        style={{ height: 125 }}
-        alt="Awesome Bridge"
-      />
-      <Card className={classes.transferCard} bordered={false}>
-        <div className={classes.cardContent}>
-          {fromChain && isApeChain(fromChain.id) && isMobile ? (
-            <ApeTip />
-          ) : (
-            <></>
-          )}
+  if (maintenanceMode) {
+    return <Maintenance />;
+  } else
+    return (
+      <div className={classes.flexCenter}>
+        <img
+          src={BridgeAwesomeLogo}
+          style={{ height: 125 }}
+          alt="Awesome Bridge"
+        />
+        <Card className={classes.transferCard} bordered={false}>
+          <div className={classes.cardContent}>
+            {fromChain && isApeChain(fromChain.id) && isMobile ? (
+              <ApeTip />
+            ) : (
+              <></>
+            )}
 
-          <div className={classes.trans}>
-            <div className={classes.transitem}>
-              <div className={classes.transitemTitle}>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <div className={classes.source}>From</div>
-                  <div className={classes.transselect}>
-                    <div
-                      className={classes.chainSelcet}
-                      onClick={() => {
-                        showChain("from");
-                      }}
-                    >
-                      <Avatar
-                        size="small"
-                        src={fromChain?.icon}
-                        style={{ marginRight: 5 }}
-                      />
-                      <span style={{ marginRight: 13 }}>{fromChain?.name}</span>
-                      <img src={arrowDowm} alt="more from chain" />
-                    </div>
-                  </div>
-                </div>
-                {(() => {
-                  if (pegConfig.mode !== PeggedChainMode.Off) {
-                    return null;
-                  }
-                  if (isMobile) {
-                    return (
-                      <div>
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenRateModal();
-                          }}
-                          style={{ cursor: "pointer", position: "relative" }}
-                        >
-                          <img
-                            src={settingIcon}
-                            className={classes.settingIcon}
-                            alt="setting icon"
-                          />
-                        </div>
-                        <Modal
-                          className={classes.mobileRateModal}
-                          title=""
-                          closable
-                          visible={showRateModal}
-                          onCancel={handleCloseRateModal}
-                          footer={null}
-                          centered
-                        >
-                          <RateModal
-                            onCancle={() => {
-                              handleCloseRateModal();
-                            }}
-                          />
-                        </Modal>
-                      </div>
-                    );
-                  }
-                  return renderCardSetting();
-                })()}
-              </div>
-              <div className={classes.transcontent}>
-                <div className={classes.transnum}>
-                  <div className={classes.transnumtext}>Send:</div>
-
-                  {balanceAvailable() ? (
-                    <div
-                      className={classes.transnumlimt}
-                      onClick={() => {
-                        setMaxAmount();
-                      }}
-                    >
-                      Max: <span>{userBalance}</span>
-                    </div>
-                  ) : isNonEVMChain(fromChain?.id ?? 0) &&
-                    (!flowConnected || !flowAccountInitialized) ? (
-                    <div className={classes.transnumlimt}>Max: --</div>
-                  ) : (
-                    ""
-                  )}
-                </div>
-                <div className={classes.transndes}>
-                  <div className={classes.transdestext}>
-                    <TokenInput
-                      value={amount}
-                      onChange={handleTokenInputChange}
-                      disabled={amountInputDisabled()}
-                    />
-                  </div>
-                  <div className={classes.transdeslimt}>
-                    <div
-                      className={classes.investSelct}
-                      onClick={() => toggleIsTokenShow()}
-                    >
-                      <div className={classes.selectpic}>
-                        <img src={selectedToken?.icon} alt="" />
-                      </div>
-                      <div className={classes.selectdes}>
-                        {selectedToken?.token?.display_symbol ??
-                          getTokenListSymbol(
-                            selectedToken?.token.symbol,
-                            fromChain?.id
-                          )}
-                      </div>
-                      <div className={classes.selecttoog}>
-                        <DownOutlined style={{ fontSize: "14px" }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className={classes.icon}>
-              <img
-                src={arrowUpDowm}
-                alt="arrow up down"
-                onClick={() => exchangeFromAndToChain()}
-                style={{
-                  cursor: "pointer",
-                }}
-                width={32}
-              />
-            </div>
-            <div className={classes.transitem}>
-              <div className={classes.transitemTitle}>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <div className={classes.source}>To</div>
-                  <div className={classes.transselect}>
-                    <div
-                      className={classes.chainSelcet}
-                      onClick={() => {
-                        showChain("to");
-                      }}
-                    >
-                      <Avatar
-                        size="small"
-                        src={toChain?.icon}
-                        style={{ marginRight: 5 }}
-                      />
-                      <span style={{ marginRight: 13 }}>{toChain?.name}</span>
-                      <img src={arrowDowm} alt="more to chain" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className={classes.transcontent}>
-                {fromChain && toChain && selectedToken ? (
-                  <div className={classes.transnum}>
-                    <div className={classes.transnumtext}>
-                      <Tooltip
-                        title={
-                          <div className={classes.transcontenttip}>
-                            This amount is estimated based on the current bridge
-                            rate and fees.
-                          </div>
-                        }
-                        placement="top"
-                        color="#fff"
-                        overlayInnerStyle={{
-                          color: "#000",
-                          backgroundColor: "#fff",
-                          width: 265,
+            <div className={classes.trans}>
+              <div className={classes.transitem}>
+                <div className={classes.transitemTitle}>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <div className={classes.source}>From</div>
+                    <div className={classes.transselect}>
+                      <div
+                        className={classes.chainSelcet}
+                        onClick={() => {
+                          showChain("from");
                         }}
                       >
-                        <InfoCircleOutlined
-                          style={{ fontSize: 12, marginRight: 6 }}
+                        <Avatar
+                          size="small"
+                          src={fromChain?.icon}
+                          style={{ marginRight: 5 }}
                         />
-                      </Tooltip>
-                      Receive (estimated):
+                        <span style={{ marginRight: 13 }}>
+                          {fromChain?.name}
+                        </span>
+                        <img src={arrowDowm} alt="more from chain" />
+                      </div>
                     </div>
                   </div>
-                ) : null}
-                <div className={classes.transndes}>
-                  <div className={classes.transdestext}>
-                    {receiveAmount === 0 ? (
-                      <span style={{ float: "left" }}>0.0</span>
+                  {(() => {
+                    if (pegConfig.mode !== PeggedChainMode.Off) {
+                      return null;
+                    }
+                    if (isMobile) {
+                      return (
+                        <div>
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenRateModal();
+                            }}
+                            style={{ cursor: "pointer", position: "relative" }}
+                          >
+                            <img
+                              src={settingIcon}
+                              className={classes.settingIcon}
+                              alt="setting icon"
+                            />
+                          </div>
+                          <Modal
+                            className={classes.mobileRateModal}
+                            title=""
+                            closable
+                            visible={showRateModal}
+                            onCancel={handleCloseRateModal}
+                            footer={null}
+                            centered
+                          >
+                            <RateModal
+                              onCancle={() => {
+                                handleCloseRateModal();
+                              }}
+                            />
+                          </Modal>
+                        </div>
+                      );
+                    }
+                    return renderCardSetting();
+                  })()}
+                </div>
+                <div className={classes.transcontent}>
+                  <div className={classes.transnum}>
+                    <div className={classes.transnumtext}>Send:</div>
+
+                    {balanceAvailable() ? (
+                      <div
+                        className={classes.transnumlimt}
+                        onClick={() => {
+                          setMaxAmount();
+                        }}
+                      >
+                        Max: <span>{userBalance}</span>
+                      </div>
+                    ) : isNonEVMChain(fromChain?.id ?? 0) &&
+                      (!flowConnected || !flowAccountInitialized) ? (
+                      <div className={classes.transnumlimt}>Max: --</div>
                     ) : (
-                      <span style={{ float: "left" }}>
-                        {receiveAmount < 0
-                          ? "--"
-                          : `${receiveAmount} ${getTokenDisplaySymbol(
-                              selectedToken?.token,
-                              fromChain,
-                              toChain,
-                              transferConfig.pegged_pair_configs
-                            )}`}
-                      </span>
+                      ""
                     )}
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {nonEVMMode !== NonEVMMode.off && fromChainWalletConnected ? (
-              <div className={classes.transitem}>
-                <div style={{ height: 24 }} />
-                <div className={classes.transcontent}>
-                  <div className={classes.nonEvmRecipientText}>
-                    Recipient address on {toChain?.name} (do NOT send funds to
-                    exchanges)
-                  </div>
                   <div className={classes.transndes}>
-                    <div className={classes.nonEvmAddressText}>
+                    <div className={classes.transdestext}>
                       <TokenInput
-                        value={nonEVMRecipientAddress}
-                        placeholderText="Please enter recipient address"
-                        onChange={(e) => {
-                          console.log(
-                            "Setting manually entered Non EVM address:",
-                            e.value
-                          );
-                          setNonEVMRecipientAddress(e.value);
-                        }}
-                        disabled={disableForFlowReceiver}
+                        value={amount}
+                        onChange={handleTokenInputChange}
+                        disabled={amountInputDisabled()}
                       />
+                    </div>
+                    <div className={classes.transdeslimt}>
+                      <div
+                        className={classes.investSelct}
+                        onClick={() => toggleIsTokenShow()}
+                      >
+                        <div className={classes.selectpic}>
+                          <img src={selectedToken?.icon} alt="" />
+                        </div>
+                        <div className={classes.selectdes}>
+                          {selectedToken?.token?.display_symbol ??
+                            getTokenListSymbol(
+                              selectedToken?.token.symbol,
+                              fromChain?.id
+                            )}
+                        </div>
+                        <div className={classes.selecttoog}>
+                          <DownOutlined style={{ fontSize: "14px" }} />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            ) : (
-              ""
-            )}
-          </div>
-        </div>
+              <div className={classes.icon}>
+                <img
+                  src={arrowUpDowm}
+                  alt="arrow up down"
+                  onClick={() => exchangeFromAndToChain()}
+                  style={{
+                    cursor: "pointer",
+                  }}
+                  width={32}
+                />
+              </div>
+              <div className={classes.transitem}>
+                <div className={classes.transitemTitle}>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <div className={classes.source}>To</div>
+                    <div className={classes.transselect}>
+                      <div
+                        className={classes.chainSelcet}
+                        onClick={() => {
+                          showChain("to");
+                        }}
+                      >
+                        <Avatar
+                          size="small"
+                          src={toChain?.icon}
+                          style={{ marginRight: 5 }}
+                        />
+                        <span style={{ marginRight: 13 }}>{toChain?.name}</span>
+                        <img src={arrowDowm} alt="more to chain" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className={classes.transcontent}>
+                  {fromChain && toChain && selectedToken ? (
+                    <div className={classes.transnum}>
+                      <div className={classes.transnumtext}>
+                        <Tooltip
+                          title={
+                            <div className={classes.transcontenttip}>
+                              This amount is estimated based on the current
+                              bridge rate and fees.
+                            </div>
+                          }
+                          placement="top"
+                          color="#fff"
+                          overlayInnerStyle={{
+                            color: "#000",
+                            backgroundColor: "#fff",
+                            width: 265,
+                          }}
+                        >
+                          <InfoCircleOutlined
+                            style={{ fontSize: 12, marginRight: 6 }}
+                          />
+                        </Tooltip>
+                        Receive (estimated):
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className={classes.transndes}>
+                    <div className={classes.transdestext}>
+                      {receiveAmount === 0 ? (
+                        <span style={{ float: "left" }}>0.0</span>
+                      ) : (
+                        <span style={{ float: "left" }}>
+                          {receiveAmount < 0
+                            ? "--"
+                            : `${receiveAmount} ${getTokenDisplaySymbol(
+                                selectedToken?.token,
+                                fromChain,
+                                toChain,
+                                transferConfig.pegged_pair_configs
+                              )}`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-        <div className={classes.err}>
-          <div className={classes.errInner}>{errorMsg}</div>
-        </div>
-        <div
-          style={{
-            width: "100%",
-            textAlign: "center",
-            position: "relative",
-            height: tempNeedShowCreateFlowVaultBtn ? 132 : 56,
-          }}
-        >
-          <div className={classes.btnare}>
-            <div className={classes.btnarein}>{renderBtn()}</div>
+              {nonEVMMode !== NonEVMMode.off && fromChainWalletConnected ? (
+                <div className={classes.transitem}>
+                  <div style={{ height: 24 }} />
+                  <div className={classes.transcontent}>
+                    <div className={classes.nonEvmRecipientText}>
+                      Recipient address on {toChain?.name} (do NOT send funds to
+                      exchanges)
+                    </div>
+                    <div className={classes.transndes}>
+                      <div className={classes.nonEvmAddressText}>
+                        <TokenInput
+                          value={nonEVMRecipientAddress}
+                          placeholderText="Please enter recipient address"
+                          onChange={(e) => {
+                            console.log(
+                              "Setting manually entered Non EVM address:",
+                              e.value
+                            );
+                            setNonEVMRecipientAddress(e.value);
+                          }}
+                          disabled={disableForFlowReceiver}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                ""
+              )}
+            </div>
           </div>
-        </div>
-      </Card>
-      {!denyPeg && bridgeRate && !exceedsSafeguard ? (
-        <TransferOverview
-          selectedToken={selectedToken}
-          fromChain={fromChain}
-          toChain={toChain}
-          bridgeRate={bridgeRate}
-          minimumReceived={minimumReceived}
-          baseFee={(estimateAmtInfoInState as any).result.network_fee}
-          percFee={(estimateAmtInfoInState as any).result.absolute_fee}
-          transferConfig={transferConfig}
-          isBigAmountDelayed={false}
-          delayMinutes={""}
-          estimateAmtInfoInState={estimateAmtInfoInState}
+
+          <div className={classes.err}>
+            <div className={classes.errInner}>{errorMsg}</div>
+          </div>
+          <div
+            style={{
+              width: "100%",
+              textAlign: "center",
+              position: "relative",
+              height: tempNeedShowCreateFlowVaultBtn ? 132 : 56,
+            }}
+          >
+            <div className={classes.btnare}>
+              <div className={classes.btnarein}>{renderBtn()}</div>
+            </div>
+          </div>
+        </Card>
+        {!denyPeg && bridgeRate && !exceedsSafeguard ? (
+          <TransferOverview
+            selectedToken={selectedToken}
+            fromChain={fromChain}
+            toChain={toChain}
+            bridgeRate={bridgeRate}
+            minimumReceived={minimumReceived}
+            baseFee={(estimateAmtInfoInState as any).result.network_fee}
+            percFee={(estimateAmtInfoInState as any).result.absolute_fee}
+            transferConfig={transferConfig}
+            isBigAmountDelayed={false}
+            delayMinutes={""}
+            estimateAmtInfoInState={estimateAmtInfoInState}
+          />
+        ) : null}
+        <ProviderModal
+          visible={showProviderModal}
+          onCancel={handleCloseProviderModal}
         />
-      ) : null}
-      <ProviderModal
-        visible={showProviderModal}
-        onCancel={handleCloseProviderModal}
-      />
-      <FlowProviderModal
-        visible={showFlowProviderModal}
-        onCancel={handleCloseFlowProviderModal}
-      />
-      <TerraProviderModal
-        visible={showTerraProviderModal}
-        onCancel={handleCloseTerraProviderModal}
-      />
-      {showTransferModal && (
-        <TransferModal
-          amount={maxValue || amount}
-          receiveAmount={receiveAmount}
-          nonEVMReceiverAddress={nonEVMRecipientAddress}
-          onCancel={handleCloseTransferModal}
-          onSuccess={handleSuccess}
+        <FlowProviderModal
+          visible={showFlowProviderModal}
+          onCancel={handleCloseFlowProviderModal}
         />
-      )}
-      <TokenList
-        visible={!isNonEVMChain(fromChain?.id ?? 0) && isTokenShow}
-        onSelectToken={handleSelectToken}
-        onCancel={() => toggleIsTokenShow()}
-      />
-      <NonEVMChainTokenList
-        visible={isNonEVMChain(fromChain?.id ?? 0) && isTokenShow}
-        onSelectToken={handleSelectToken}
-        onCancel={() => toggleIsTokenShow()}
-      />
-    </div>
-  );
+        <TerraProviderModal
+          visible={showTerraProviderModal}
+          onCancel={handleCloseTerraProviderModal}
+        />
+        {showTransferModal && (
+          <TransferModal
+            amount={maxValue || amount}
+            receiveAmount={receiveAmount}
+            nonEVMReceiverAddress={nonEVMRecipientAddress}
+            onCancel={handleCloseTransferModal}
+            onSuccess={handleSuccess}
+          />
+        )}
+        <TokenList
+          visible={!isNonEVMChain(fromChain?.id ?? 0) && isTokenShow}
+          onSelectToken={handleSelectToken}
+          onCancel={() => toggleIsTokenShow()}
+        />
+        <NonEVMChainTokenList
+          visible={isNonEVMChain(fromChain?.id ?? 0) && isTokenShow}
+          onSelectToken={handleSelectToken}
+          onCancel={() => toggleIsTokenShow()}
+        />
+      </div>
+    );
 };
 
 export default Transfer;

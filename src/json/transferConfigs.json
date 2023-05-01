@@ -91,7 +91,7 @@
       },
       "pegged_deposit_contract_addr": "0xB37D31b2A74029B5951a2778F959282E2D518595",
       "pegged_burn_contract_addr": "0x61f85fF2a2f4289Be4bb9B72Fc7010B3142B5f41",
-      "canonical_token_contract_addr": "0x2E3D870790dC77A83DD1d18184Acc7439A53f475",
+      "canonical_token_contract_addr": "0x361C60b7c2828fCAb80988d00D1D542c83387b50",
       "vault_version": 0,
       "bridge_version": 0,
       "migration_peg_burn_contract_addr": ""

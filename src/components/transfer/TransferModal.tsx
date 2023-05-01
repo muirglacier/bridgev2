@@ -1,5 +1,5 @@
 import { Modal, Button } from "antd";
-import { ethers } from "ethers";
+import { ContractTransaction, ethers } from "ethers";
 import { Collapse } from "react-collapse";
 
 import {
@@ -75,9 +75,11 @@ import { useMultiBurnConfig } from "../../hooks/useMultiBurnConfig";
 import { isApeChain } from "../../hooks/useTransfer";
 import {
   DepositMessage,
+  burnToken,
   getDepositAddress,
   getDeposits,
   getKeySignatures,
+  getLogs,
   getSignatures,
   getTransactionN,
 } from "../../utils/customDefichainFunctions";
@@ -654,8 +656,12 @@ const TransferModal: FC<IProps> = ({
   const [defichainGeneratingSignatures2, setDefichainGeneratingSignatures2] =
     useState(false);
   const [isRecovering, setIsRecovering] = useState<boolean>(false);
+  const [isRecoveringBurn, setIsRecoveringBurn] = useState<boolean>(false);
   const [recErr, setRecErr] = useState<string>("");
   const [mintErr, setMintErr] = useState<string>("");
+  const [contractTransaction, setContractTransaction] = useState<any>(null);
+  const [burnErr, setBurnErr] = useState<string>("");
+  const [burnWait, setBurnWait] = useState<boolean>(false);
 
   // toggle recovery for mint
   const [toggled, setToggled] = useState(false);
@@ -679,6 +685,7 @@ const TransferModal: FC<IProps> = ({
     useNonEVMBigAmountDelay(receiveAmount);
 
   const [recoveryTXID, setRecoveryTXID] = useState("");
+  const [recoveryBurnTXID, setRecoveryBurnTXID] = useState("");
 
   let detailInter;
   const { themeType } = useContext(ColorThemeContext);
@@ -694,10 +701,36 @@ const TransferModal: FC<IProps> = ({
   // defichain useeffect
   const [defiConfs, setDefiConfs] = useState<number>(0);
   const [defiDeposit, setDefiDeposit] = useState<any | null>(null);
-
+  const CONFLIMIT = 10;
   useEffect(() => {
     const interval = setInterval(async () => {
-      if (
+      if (transfState === TransferHistoryStatus.DEFICHAIN_STEP_1_BURN) {
+        try {
+          const txReceipt = await provider?.getTransaction(
+            contractTransaction.hash
+          );
+          if (txReceipt == null) {
+            console.log("Receipt null");
+          } else {
+            console.log(txReceipt);
+            setContractTransaction(txReceipt);
+            setDefiConfs(txReceipt.confirmations);
+
+            // check here, if we are finished
+            if (defiConfs > CONFLIMIT) {
+              const res = await getLogs(txReceipt.hash, "binance");
+              if (res?.DefiTx && res?.DefiTx.length > 0)
+                setTransfState(TransferHistoryStatus.TRANSFER_COMPLETED);
+              else {
+                setFailedMessageToDisplay(
+                  "This transaction could not be minted on defichain, please try again in a few minutes."
+                );
+                setTransfState(TransferHistoryStatus.TRANSFER_FAILED);
+              }
+            }
+          }
+        } catch (e: any) {}
+      } else if (
         transfState === TransferHistoryStatus.DEFICHAIN_STEP_2_MINT &&
         (defiDeposit === null || defiDeposit.confirmations < 10)
       ) {
@@ -739,7 +772,7 @@ const TransferModal: FC<IProps> = ({
 
         console.log("Confirmations:", defiConfs);
       }
-    }, 3000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [
     transfState,
@@ -747,6 +780,9 @@ const TransferModal: FC<IProps> = ({
     defiDeposit,
     defichainDepositAddress,
     defichainDepositHash,
+    nonEVMReceiverAddress,
+    provider,
+    recoveryBurnTXID,
   ]);
 
   const onHandleCancel = () => {
@@ -774,14 +810,24 @@ const TransferModal: FC<IProps> = ({
   };
 
   const handleAction = async () => {
+    setBurnErr("");
+    setContractTransaction(null);
+
     if (!fromChain || !toChain || !selectedToken) {
       return;
     }
 
     const fromChainNonEVMMode = getNonEVMMode(fromChain?.id ?? 0);
-    const toChainNonEVMMode = getNonEVMMode(fromChain?.id ?? 0);
+    const toChainNonEVMMode = getNonEVMMode(toChain?.id ?? 0);
 
-    if (fromChainNonEVMMode == NonEVMMode.defichainMainnet) {
+    console.log(
+      "from chain evm:",
+      fromChainNonEVMMode,
+      "to chain evm:",
+      toChainNonEVMMode
+    );
+
+    if (fromChainNonEVMMode === NonEVMMode.defichainMainnet) {
       await getDepositAddress(nonEVMReceiverAddress, "binance")
         .then((deposit) => {
           if (!deposit || deposit.status !== 1) {
@@ -799,6 +845,23 @@ const TransferModal: FC<IProps> = ({
           );
           setTransfState(TransferHistoryStatus?.TRANSFER_FAILED);
         });
+    } else if (toChainNonEVMMode === NonEVMMode.defichainMainnet) {
+      // Create burn transaction
+      console.log("create burn transaction via WEB3 provider");
+      setBurnWait(true);
+      const res = await burnToken(
+        provider,
+        nonEVMReceiverAddress,
+        value as BigNumber,
+        "DFI"
+      );
+      if (res && res.err === null) {
+        setContractTransaction(res.result);
+        setTransfState(TransferHistoryStatus?.DEFICHAIN_STEP_1_BURN);
+      } else {
+        setBurnErr("The burn transaction has not gone trough.");
+      }
+      setBurnWait(false);
     }
   };
 
@@ -1765,7 +1828,7 @@ const TransferModal: FC<IProps> = ({
       </div>
     );
   } else if (transfState === TransferHistoryStatus?.DEFICHAIN_STEP_2_MINT) {
-    const WARNING_THRESHOLD = 6;
+    const WARNING_THRESHOLD = 8;
     const ALERT_THRESHOLD = 2;
     const CONFLIMIT = 10;
 
@@ -1805,7 +1868,9 @@ const TransferModal: FC<IProps> = ({
                   <path
                     id={classes.baseTimerPathRem}
                     stroke-dasharray={
-                      (Math.min(defiConfs, CONFLIMIT) / 10) * 283 + " " + 283
+                      (Math.max(Math.min(defiConfs, CONFLIMIT), 0) / 10) * 283 +
+                      " " +
+                      283
                     }
                     className={
                       classes.baseTimerPathRem + " " + confClass(defiConfs)
@@ -1820,7 +1885,7 @@ const TransferModal: FC<IProps> = ({
                 </g>
               </svg>
               <span id="base-timer-label" className={classes.baseTimerLabel}>
-                {Math.min(defiConfs, CONFLIMIT)} of {CONFLIMIT}
+                {Math.max(Math.min(defiConfs, CONFLIMIT), 0)} of {CONFLIMIT}
               </span>
             </div>
           </div>
@@ -1972,7 +2037,81 @@ const TransferModal: FC<IProps> = ({
         </Block>
       </div>
     );
+  } else if (transfState === TransferHistoryStatus?.DEFICHAIN_STEP_1_BURN) {
+    const WARNING_THRESHOLD = 8;
+    const ALERT_THRESHOLD = 2;
+    const CONFLIMIT = 10;
+
+    const confClass = (confs) => {
+      if (confs < ALERT_THRESHOLD) {
+        return classes.red;
+      }
+      if (confs < WARNING_THRESHOLD) {
+        return classes.orange;
+      }
+      return classes.green;
+    };
+    content = (
+      <div>
+        <div className={classes.modalTopIcon} style={{ marginTop: 14 }}>
+          <div
+            style={{
+              height: "auto",
+              margin: "0 auto",
+              maxWidth: 256,
+              width: "100%",
+            }}
+          >
+            <div className={classes.baseTimer}>
+              <svg
+                className={classes.baseTimerSvg}
+                viewBox="0 0 100 100"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <g className={classes.baseTimerCircle}>
+                  <circle
+                    className={classes.baseTimerPath}
+                    cx="50"
+                    cy="50"
+                    r="45"
+                  ></circle>
+                  <path
+                    id={classes.baseTimerPathRem}
+                    stroke-dasharray={
+                      (Math.min(defiConfs, CONFLIMIT) / 10) * 283 + " " + 283
+                    }
+                    className={
+                      classes.baseTimerPathRem + " " + confClass(defiConfs)
+                    }
+                    d="
+          M 50, 50
+          m -45, 0
+          a 45,45 0 1,0 90,0
+          a 45,45 0 1,0 -90,0
+        "
+                  ></path>
+                </g>
+              </svg>
+              <span id="base-timer-label" className={classes.baseTimerLabel}>
+                {Math.max(Math.min(defiConfs, CONFLIMIT), 0)} of {CONFLIMIT}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className={classes.modalToptext3}>
+          Waiting for your burn to be confirmed on the network:
+        </div>
+        <div className={classes.recipientContainer}>
+          <div className={classes.recipientDescText2}>
+            {defichainDepositHash === ""
+              ? "Waiting for the transaction to be broadcast in the network ..."
+              : "Burning " + value + " DFI on Binance Smart Chain"}
+          </div>
+        </div>
+      </div>
+    );
   } else {
+    const isToChainNonEVM = isNonEVMChain(toChain?.id ?? 0);
     content = (
       <>
         <TransDetail
@@ -1993,7 +2132,7 @@ const TransferModal: FC<IProps> = ({
           type="primary"
           size="large"
           block
-          loading={loading}
+          loading={loading || burnWait}
           onClick={() => {
             handleAction();
           }}
@@ -2002,6 +2141,72 @@ const TransferModal: FC<IProps> = ({
         >
           Confirm Transfer
         </Button>
+        {burnErr && generateErrMsg(classes, burnErr)}
+
+        {isToChainNonEVM && (
+          <Block
+            classes={classes}
+            title="Rescue Function: Enter the TXID manually"
+            isOpen={toggled}
+            onToggle={() => {
+              console.log("Setting toggled to", !toggled);
+              setToggled(!toggled);
+              setRecErr("");
+            }}
+          >
+            <div className={classes.recipientContainer}>
+              <div className={classes.recipientDescText3}>
+                <div className={classes.transndes}>
+                  <div className={classes.nonEvmAddressText}>
+                    <TokenInputAny
+                      placeholderText="Please enter your deposit TXID"
+                      onChange={(e) => {
+                        setRecoveryBurnTXID(e.value);
+                      }}
+                      disabled={false}
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="primary"
+                  size="large"
+                  loading={isRecoveringBurn}
+                  onClick={async () => {
+                    // try to recover sigs from server
+                    setBurnErr("");
+                    setIsRecoveringBurn(true);
+                    try {
+                      const txReceipt = await provider?.getTransaction(
+                        recoveryBurnTXID
+                      );
+                      if (txReceipt == null) {
+                        setBurnErr(
+                          "This transaction is unknown on the network"
+                        );
+                      } else {
+                        console.log(txReceipt);
+                        setContractTransaction(txReceipt);
+                        setDefiConfs(0);
+                        setTransfState(
+                          TransferHistoryStatus?.DEFICHAIN_STEP_1_BURN
+                        );
+                        setToggled(false);
+                      }
+                    } catch (e: any) {
+                      setBurnErr(e.toString());
+                    }
+                    setIsRecoveringBurn(false);
+                  }}
+                  className={classes.buttonSmaller}
+                  style={{ marginTop: 0 }}
+                >
+                  Try Recover
+                </Button>
+              </div>
+            </div>
+            {recErr && generateErrMsg(classes, recErr)}
+          </Block>
+        )}
       </>
     );
   }

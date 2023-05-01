@@ -7,7 +7,7 @@ import { UseBalanceReturn } from "./tokenBalance";
 export default function useEthBalance(
   provider: JsonRpcProvider | undefined,
   address: string,
-  timeout = 3000,
+  timeout = 3000
 ): UseBalanceReturn {
   const [balance, setBalance] = useState(BigNumber.from(0));
   const [loading, setLoading] = useState(false);
@@ -16,9 +16,11 @@ export default function useEthBalance(
   const [reloadTrigger, reload] = useToggle(false);
 
   useEffect(() => {
+    console.log("trigerred ETH balance");
     if (!provider || !address) {
       return;
     }
+    console.log("address fetch:", address);
 
     const balancePromise = provider.getBalance(address);
 

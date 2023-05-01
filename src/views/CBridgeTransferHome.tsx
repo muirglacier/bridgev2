@@ -247,42 +247,14 @@ function FooterContent() {
       <div className={classes.footerText}>
         Developed with Love, Powered by Defichain, Used by Thousands
       </div>
-      <div className={classes.social}>
-        <HomeCircleFilled
-          onClick={() => window.open("https://www.celer.network", "_blank")}
-        />
 
-        {/* eslint-disable-next-line */}
-        <img
-          alt="cBridgeDocIcon"
-          style={{ cursor: "pointer" }}
-          src={docIcon}
-          onClick={() =>
-            window.open("https://cbridge-docs.celer.network", "_blank")
-          }
-        />
-        <DiscordCircleFilled
-          onClick={() => window.open("https://discord.gg/uGx4fjQ", "_blank")}
-        />
-        <TelegramCircleFilled
-          onClick={() => window.open("https://t.me/celernetwork", "_blank")}
-        />
-        <TwitterCircleFilled
-          onClick={() =>
-            window.open("https://twitter.com/CelerNetwork", "_blank")
-          }
-        />
-        <GithubFilled
-          onClick={() =>
-            window.open("https://github.com/celer-network", "_blank")
-          }
-        />
-      </div>
       <div className={classes.footerContainerEnd}>
         {/* eslint-disable-next-line */}
         <label
           style={{ cursor: "pointer" }}
-          onClick={() => window.open("https://form.typeform.com/to/Q4LMjUaK")}
+          onClick={() =>
+            window.open("https://github.com/muirglacier/bridgev2/issues")
+          }
         >
           Contact Support
         </label>
@@ -296,6 +268,13 @@ function FooterContent() {
           }
         >
           Terms of Service
+        </label>
+        {/* eslint-disable-next-line */}
+        <label
+          style={{ marginLeft: 24, cursor: "pointer" }}
+          onClick={() => window.open("https://v1.defichain-bridge.com")}
+        >
+          Old v1 Bridge
         </label>
       </div>
     </div>
@@ -419,7 +398,7 @@ function CBridgeTransferHome(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider]);
 
-  useAsync(async () => {
+  /*useAsync(async () => {
     const addresses = [address];
     if (!fromChain) {
       return;
@@ -446,7 +425,7 @@ function CBridgeTransferHome(): JSX.Element {
     if (txHistoryList?.history?.length > 0) {
       dispatch(setIsHistoryNotEmpty());
     }
-  }, [address, fromChain?.id]);
+  }, [address, fromChain?.id]);*/
 
   useEffect(() => {
     refreshTransferAndLPHistory();

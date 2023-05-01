@@ -3,8 +3,8 @@ import { alpha2Hex } from "../helpers/alpha2Hex";
 export const darkTheme = {
   isLight: false,
   primaryStress: "#274BDB",
-  primaryBrand: "#3366FF",
-  buttonHover: "#3366FF",
+  primaryBrand: "#ee2cb1",
+  buttonHover: "#ee2cb1",
   primaryReduce: "#598BFF",
   secondBrand: "#8F9BB3",
   primaryBackground: "#17171A",
@@ -80,6 +80,6 @@ export const lightTheme = {
   blurBg: "rgba(96, 96, 96, 0.9)",
   sliderTrack: "#0E1012",
   nftTextColor: "#2E3A59",
-}
+};
 
 export type Theme = typeof darkTheme;

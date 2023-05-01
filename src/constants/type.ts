@@ -181,6 +181,7 @@ export enum TransferHistoryStatus {
   TRANSFER_DELAYED,
   DEFICHAIN_STEP_1_MINT,
   DEFICHAIN_STEP_2_MINT,
+  DEFICHAIN_STEP_1_BURN,
 }
 
 interface TransferInfo {

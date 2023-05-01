@@ -31,6 +31,7 @@
     "@walletconnect/web3-provider": "^1.7.0",
     "antd": "^4.16.13",
     "axios": "^0.21.1",
+    "bech32": "^2.0.0",
     "bitcoinjs-lib": "^6.1.0",
     "bnc-notify": "^1.5.0",
     "burner-provider": "^1.0.38",
@@ -68,6 +69,7 @@
     "react-use": "^17.2.1",
     "redux-persist": "^6.0.0",
     "satoshi-bitcoin-ts": "^0.2.4",
+    "sha256-uint8array": "^0.10.5",
     "ts-protoc-gen": "^0.15.1-pre.a71b34e"
   },
   "devDependencies": {
