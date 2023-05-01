@@ -3,9 +3,9 @@ import { Card, Button, Avatar, Tooltip, Modal } from "antd";
 import { createUseStyles } from "react-jss";
 import { useToggle, useNetworkState, useAsync } from "react-use";
 import { formatUnits } from "@ethersproject/units";
-import { BigNumber } from "@ethersproject/bignumber";
 import { MaxUint256 } from "@ethersproject/constants";
 import { debounce } from "lodash";
+
 import BridgeAwesomeLogo from "../images/bridge_logo_jelly.svg";
 import {
   WarningFilled,
@@ -128,6 +128,7 @@ import {
 import { isApeChain } from "../hooks/useTransfer";
 import { ApeTip } from "./nft/ApeTips";
 import { customOverrideEstimateAmt } from "../utils/customBridgeOverrides";
+import { BigNumber } from "ethers";
 
 /* eslint-disable */
 /* eslint-disable camelcase */
@@ -908,14 +909,7 @@ const Transfer: FC = () => {
       return;
     }
 
-    bridge
-      ?.minSend(selectedToken.token.address)
-      .then((res) => {
-        setMinSendValue(res);
-      })
-      .catch((e) => {
-        console.log(e);
-      });
+    setMinSendValue(BigNumber.from(600));
   }, [selectedToken, bridge]);
 
   useEffect(() => {
@@ -2022,6 +2016,13 @@ const Transfer: FC = () => {
         )
           ?.split(",")
           .join("")
+      );
+
+      console.log("Decimals Claculation Tests:");
+      console.log(
+        "Target Coin Decimals:",
+        getTokenByChainAndTokenSymbol(toChain?.id, targetToken?.token?.symbol)
+          ?.token.decimal
       );
       const targetReceiveAmounts = res.result.value;
       const receiveAmounts = formatDecimal(

@@ -11,7 +11,7 @@ import {
   useCallback,
 } from "react";
 import { createUseStyles } from "react-jss";
-import { WarningFilled } from "@ant-design/icons";
+import { CloseCircleFilled, WarningFilled } from "@ant-design/icons";
 import { BigNumber } from "@ethersproject/bignumber";
 import { formatUnits } from "@ethersproject/units";
 import { formatDecimalPart, safeParseUnits } from "celer-web-utils/lib/format";
@@ -98,6 +98,29 @@ const Down = ({ classes, isOpen }) => {
     </svg>
   ) as any;
 };
+
+const generateErrMsg = (
+  classes: any,
+  msg: string,
+  iconType = "WarningFilled"
+) => {
+  return (
+    <div className={classes.err}>
+      <div className={classes.errInner}>
+        {" "}
+        <div className="errInnerbody">
+          {iconType === "WarningFilled" ? (
+            <WarningFilled style={{ fontSize: 20, marginRight: 5 }} />
+          ) : (
+            <CloseCircleFilled style={{ fontSize: 20, marginRight: 5 }} />
+          )}
+          <span style={{ fontSize: 14, marginLeft: 10 }}>{msg}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function Block({ classes, isOpen, title, onToggle, children }) {
   return (
     <div className={cx("block")}>
@@ -182,6 +205,23 @@ const useStyles = createUseStyles<string, { isMobile: boolean }, Theme>(
     totalValueRN: {
       fontSize: 16,
       color: "#00d395",
+    },
+    err: {
+      width: "100%",
+      textAlign: "center",
+      display: "flex",
+      justifyContent: "center",
+      minHeight: (props) => (props.isMobile ? 0 : 24),
+    },
+    errInner: {
+      color: theme.infoDanger,
+      textAlign: "left",
+      margin: (props) => (props.isMobile ? "24px 0 0 0" : "24px 0"),
+      background: "#fff",
+      boxShadow:
+        "0px 6px 12px -6px rgba(24, 39, 75, 0.12), 0px 8px 24px -4px rgba(24, 39, 75, 0.08)",
+      borderRadius: 8,
+      fontSize: 14,
     },
     fromNet: {
       fontSize: 12,
@@ -610,6 +650,8 @@ const TransferModal: FC<IProps> = ({
   >(TRANSFER);
   const [loading, setLoading] = useState(false);
   const [defichainGeneratingSignatures, setDefichainGeneratingSignatures] =
+    useState(false);
+  const [defichainGeneratingSignatures2, setDefichainGeneratingSignatures2] =
     useState(false);
   const [isRecovering, setIsRecovering] = useState<boolean>(false);
   const [recErr, setRecErr] = useState<string>("");
@@ -1809,6 +1851,7 @@ const TransferModal: FC<IProps> = ({
           onClick={async () => {
             try {
               setMintErr("");
+              setDefichainGeneratingSignatures2(false);
               setDefichainGeneratingSignatures(true);
               const sign = await getKeySignatures(
                 nonEVMReceiverAddress,
@@ -1817,13 +1860,13 @@ const TransferModal: FC<IProps> = ({
                 "binance"
               );
               console.log(sign);
-              setDefichainGeneratingSignatures(false);
 
               const signed_json = JSON.parse(sign["signed_json"]);
               const r = "0x" + sign["signatures"][0]["r"] || "";
               const s = "0x" + sign["signatures"][0]["s"] || "";
               const v = sign["signatures"][0]["recovery_id"] === "00" ? 0 : 1;
 
+              setDefichainGeneratingSignatures2(true);
               let res: any = await getSignatures(
                 provider,
                 nonEVMReceiverAddress,
@@ -1835,7 +1878,10 @@ const TransferModal: FC<IProps> = ({
                 s,
                 v + 27
               );
+              console.log("getSignatures() returned:");
+              console.log(res);
               if (res.err !== null && res.err?.code !== 0) {
+                console.log("Mint error: " + res.err?.message);
                 setMintErr(res.err?.message as string);
               } else {
                 setMintErr("");
@@ -1845,6 +1891,8 @@ const TransferModal: FC<IProps> = ({
               setDefichainGeneratingSignatures(false);
               setMintErr((e as any).toString());
             }
+            setDefichainGeneratingSignatures(false);
+            setDefichainGeneratingSignatures2(false);
           }}
           className={classes.button}
         >
@@ -1852,9 +1900,11 @@ const TransferModal: FC<IProps> = ({
             ? "Waiting for confirmations ..."
             : !defichainGeneratingSignatures
             ? "Mint DFI on Binance Chain"
-            : "Generating Decentralised Signatures ..."}
+            : !defichainGeneratingSignatures2
+            ? "Generating Decentralised Signatures ..."
+            : "Submitting Mint Transaction ..."}
         </Button>
-        {mintErr && <div className={classes.modaldes}>Error: {mintErr}</div>}
+        {mintErr && generateErrMsg(classes, mintErr)}
 
         <Block
           classes={classes}
@@ -1918,7 +1968,7 @@ const TransferModal: FC<IProps> = ({
               </Button>
             </div>
           </div>
-          {recErr && <div className={classes.modaldes}>Error: {recErr}</div>}
+          {recErr && generateErrMsg(classes, recErr)}
         </Block>
       </div>
     );

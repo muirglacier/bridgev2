@@ -5,10 +5,10 @@
       "id": 56,
       "name": "Binance Smart Chain",
       "icon": "https://get.celer.app/cbridge-icons/chain-icon/BNB-chain.png",
-      "block_delay": 8,
+      "block_delay": 18,
       "gas_token_symbol": "BNB",
       "explore_url": "https://bscscan.com/",
-      "contract_addr": "0xdd90E5E87A2081Dcf0391920868eBc2FFB81a1aF",
+      "contract_addr": "0x361C60b7c2828fCAb80988d00D1D542c83387b50",
       "drop_gas_amt": "0",
       "drop_gas_cost_amt": "0",
       "drop_gas_balance_alert": "0",
@@ -24,7 +24,7 @@
       "block_delay": 8,
       "gas_token_symbol": "DFI",
       "explore_url": "https://defiscan.live/",
-      "contract_addr": "0xdd90E5E87A2081Dcf0391920868eBc2FFB81a1aF",
+      "contract_addr": "0x361C60b7c2828fCAb80988d00D1D542c83387b50",
       "drop_gas_amt": "0",
       "drop_gas_cost_amt": "0",
       "drop_gas_balance_alert": "0",
@@ -40,8 +40,8 @@
         {
           "token": {
             "symbol": "DFI",
-            "address": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
-            "decimal": 8,
+            "address": "0x361C60b7c2828fCAb80988d00D1D542c83387b50",
+            "decimal": 18,
             "xfer_disabled": false
           },
           "name": "DFI Token",
@@ -54,7 +54,7 @@
         {
           "token": {
             "symbol": "DFI",
-            "address": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
+            "address": "0x361C60b7c2828fCAb80988d00D1D542c83387b50",
             "decimal": 8,
             "xfer_disabled": false
           },
@@ -71,7 +71,7 @@
       "org_token": {
         "token": {
           "symbol": "DFI",
-          "address": "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+          "address": "0x361C60b7c2828fCAb80988d00D1D542c83387b50",
           "decimal": 8,
           "xfer_disabled": false
         },
@@ -82,8 +82,8 @@
       "pegged_token": {
         "token": {
           "symbol": "DFI",
-          "address": "0xea129aE043C4cB73DcB241AAA074F9E667641BA0",
-          "decimal": 8,
+          "address": "0x361C60b7c2828fCAb80988d00D1D542c83387b50",
+          "decimal": 18,
           "xfer_disabled": false
         },
         "name": "DFI Token (Wrapped)",

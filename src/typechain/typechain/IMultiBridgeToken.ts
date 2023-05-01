@@ -23,9 +23,15 @@ export interface IMultiBridgeTokenInterface extends utils.Interface {
     "updateBridgeSupplyCap(address,uint256)": FunctionFragment;
   };
 
-  encodeFunctionData(functionFragment: "updateBridgeSupplyCap", values: [string, BigNumberish]): string;
+  encodeFunctionData(
+    functionFragment: "updateBridgeSupplyCap",
+    values: [string, BigNumberish]
+  ): string;
 
-  decodeFunctionResult(functionFragment: "updateBridgeSupplyCap", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "updateBridgeSupplyCap",
+    data: BytesLike
+  ): Result;
 
   events: {};
 }
@@ -41,12 +47,16 @@ export interface IMultiBridgeToken extends BaseContract {
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TEvent>>;
 
-  listeners<TEvent extends TypedEvent>(eventFilter?: TypedEventFilter<TEvent>): Array<TypedListener<TEvent>>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
   listeners(eventName?: string): Array<Listener>;
-  removeAllListeners<TEvent extends TypedEvent>(eventFilter: TypedEventFilter<TEvent>): this;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
   removeAllListeners(eventName?: string): this;
   off: OnEvent<this>;
   on: OnEvent<this>;
@@ -57,18 +67,22 @@ export interface IMultiBridgeToken extends BaseContract {
     updateBridgeSupplyCap(
       _bridge: string,
       _cap: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> },
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
   };
 
   updateBridgeSupplyCap(
     _bridge: string,
     _cap: BigNumberish,
-    overrides?: Overrides & { from?: string | Promise<string> },
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   callStatic: {
-    updateBridgeSupplyCap(_bridge: string, _cap: BigNumberish, overrides?: CallOverrides): Promise<void>;
+    updateBridgeSupplyCap(
+      _bridge: string,
+      _cap: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
   };
 
   filters: {};
@@ -77,7 +91,7 @@ export interface IMultiBridgeToken extends BaseContract {
     updateBridgeSupplyCap(
       _bridge: string,
       _cap: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> },
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
   };
 
@@ -85,7 +99,7 @@ export interface IMultiBridgeToken extends BaseContract {
     updateBridgeSupplyCap(
       _bridge: string,
       _cap: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> },
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
   };
 }

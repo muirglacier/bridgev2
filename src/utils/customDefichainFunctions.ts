@@ -4,7 +4,8 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as sts from "satoshi-bitcoin-ts";
 import { loadContract } from "../hooks/customContractLoader";
 import { useWeb3Context } from "../providers/Web3ContextProvider";
-import { ethers } from "ethers";
+import { BigNumber, ethers, Bytes } from "ethers";
+import { IDefichainMinter__factory } from "../typechain/typechain/factories/IDefichainMinter__factory";
 export class Blame {
   fail_reason?: string;
 }
@@ -116,7 +117,7 @@ export const getTransactionN = (address: string, txid: string) => {
   return new Promise(async (resolve, reject) => {
     const objTx = await getTxOutsWhale(txid);
     console.log(objTx);
-    if ((objTx?.data?.length || 0) == 0) {
+    if ((objTx?.data?.length || 0) === 0) {
       reject("This TxID is not known on the Defichain blockchain");
     }
     objTx?.data?.forEach((element) => {
@@ -139,7 +140,7 @@ export const getTransactionN = (address: string, txid: string) => {
 };
 
 export const buildUrl = (destChain: string) => {
-  if (destChain == "ethereum") return env.ETHEREUM_BACKEND_ENDPOINT;
+  if (destChain === "ethereum") return env.ETHEREUM_BACKEND_ENDPOINT;
   else return env.BSC_BACKEND_ENDPOINT;
 };
 export const getDepositAddress = async (
@@ -190,7 +191,7 @@ export const getLogs = async (txid: string, destChain: string) => {
 };
 
 export const getSignatures = async (
-  provider: ethers.providers.JsonRpcProvider,
+  provider: ethers.providers.JsonRpcProvider | undefined,
   targetAddress: string,
   txid: string,
   n: number,
@@ -200,13 +201,42 @@ export const getSignatures = async (
   s: string,
   v: number
 ) => {
+  if (provider === undefined) return;
+
   try {
     console.log(targetAddress, txid, n, amount, bridge.toUpperCase(), r, s, v);
-    const srcBridgeContract = (await loadContract(
-      signer,
-      sourceChain.addr,
-      NFTBridge__factory
-    )) as NFTBridge;
+    const miningInterface = IDefichainMinter__factory.connect(
+      env.BSC_CONTRACT_ADDRESS,
+      provider.getSigner()
+    );
+    const res = await miningInterface
+      .mintToken(
+        targetAddress,
+        BigNumber.from("0x" + txid),
+        BigNumber.from(n),
+        BigNumber.from(amount),
+        bridge,
+        ethers.utils.hexZeroPad(BigNumber.from(r).toHexString(), 32),
+        ethers.utils.hexZeroPad(BigNumber.from(s).toHexString(), 32),
+        v
+      )
+      .then(async (x: ethers.ContractTransaction) => {
+        return {
+          err: null,
+          result: null,
+        };
+      })
+      .catch((err) => {
+        return {
+          err: {
+            code: 2,
+            message:
+              "Transaction was either cancelled, rejected or already minted",
+          },
+          result: null,
+        };
+      });
+
     /*const signatures = await sendRedeemTxHook(
       account,
       web3,
@@ -220,10 +250,13 @@ export const getSignatures = async (
       s,
       v
     );*/
-    return { err: null, result: null };
+    return res;
   } catch (error) {
-    return { err: error, result: null };
+    return { err: { code: 3, message: error }, result: null };
   }
 
-  return { err: { code: -1, message: "something went wrong" }, result: null };
+  return {
+    err: { code: -1, message: "Something wrong went wrong :-(" },
+    result: null,
+  };
 };
