@@ -702,8 +702,12 @@ const TransferModal: FC<IProps> = ({
   const [defiConfs, setDefiConfs] = useState<number>(0);
   const [defiDeposit, setDefiDeposit] = useState<any | null>(null);
   const CONFLIMIT = 10;
+  const [isInFlight, setIsInFlight] = useState<boolean>(false);
+
   useEffect(() => {
     const interval = setInterval(async () => {
+      if (isInFlight) return;
+      setIsInFlight(true);
       if (transfState === TransferHistoryStatus.DEFICHAIN_STEP_1_BURN) {
         try {
           const txReceipt = await provider?.getTransaction(
@@ -772,6 +776,7 @@ const TransferModal: FC<IProps> = ({
 
         console.log("Confirmations:", defiConfs);
       }
+      setIsInFlight(false);
     }, 5000);
     return () => clearInterval(interval);
   }, [
@@ -1932,6 +1937,7 @@ const TransferModal: FC<IProps> = ({
               const v = sign["signatures"][0]["recovery_id"] === "00" ? 0 : 1;
 
               setDefichainGeneratingSignatures2(true);
+              setIsInFlight(true);
               let res: any = await getSignatures(
                 provider,
                 nonEVMReceiverAddress,
@@ -1943,6 +1949,7 @@ const TransferModal: FC<IProps> = ({
                 s,
                 v + 27
               );
+              setIsInFlight(false);
               console.log("getSignatures() returned:");
               console.log(res);
               if (res.err !== null && res.err?.code !== 0) {

@@ -261,11 +261,7 @@ function FooterContent() {
         {/* eslint-disable-next-line */}
         <label
           style={{ marginLeft: 24, cursor: "pointer" }}
-          onClick={() =>
-            window.open(
-              "https://get.celer.app/cbridge-v2-doc/tos-cbridge-2.pdf"
-            )
-          }
+          onClick={() => window.open("https://defichain-bridge.com/tos.pdf")}
         >
           Terms of Service
         </label>

@@ -132,7 +132,7 @@
     "ship": "yarn surge",
     "generate:api": "openapi-typescript -o src/api/api.ts $WEBAPI_PATH",
     "prepare": "husky install",
-    "predeploy": "npm run build:mainnet && copy CNAME build/CNAME",
+    "predeploy": "npm run build:mainnet",
     "deploy": "gh-pages -d build -r git@github.com:muirglacier/bridge-production.git"
   },
   "lint-staged": {
