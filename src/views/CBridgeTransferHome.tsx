@@ -245,7 +245,9 @@ function FooterContent() {
   return (
     <div className={classes.footerContainer}>
       <div className={classes.footerText}>
-        Developed with Love, Powered by Defichain, Used by Thousands
+        Developed with love &#x1F496; | Empowering Your Digital Journey, One
+        Byte at a Time &#x1F680; <br />
+        P.S. Our logo isn't borrowed from Prince of Persia, we promise! 🤞
       </div>
 
       <div className={classes.footerContainerEnd}>
