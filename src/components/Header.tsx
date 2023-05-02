@@ -25,6 +25,7 @@ import {
   getSupportedFeatures,
 } from "../utils/featureSupported";
 import { NiceInfos } from "./NiceInfos";
+import { Telegram } from "./Telegram";
 /* eslint-disable*/
 
 const useStyles = createUseStyles((theme: Theme) => ({
@@ -540,6 +541,7 @@ export default function Header(): JSX.Element {
       </div>
 
       <div className={classes.headerRight}>
+        <Telegram />
         {(true || signer || nonEVMConnected) && (
           <div
             className="chainLocale"
