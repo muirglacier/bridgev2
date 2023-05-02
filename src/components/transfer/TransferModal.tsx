@@ -706,7 +706,7 @@ const TransferModal: FC<IProps> = ({
 
   useEffect(() => {
     const interval = setInterval(async () => {
-      if (isInFlight) return;
+      // TODO: Why not working if (isInFlight) return;
       setIsInFlight(true);
       if (transfState === TransferHistoryStatus.DEFICHAIN_STEP_1_BURN) {
         try {
