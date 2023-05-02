@@ -2899,11 +2899,6 @@ const Transfer: FC = () => {
   } else
     return (
       <div className={classes.flexCenter}>
-        <img
-          src={BridgeAwesomeLogo}
-          style={{ height: 125 }}
-          alt="Awesome Bridge"
-        />
         <Card className={classes.transferCard} bordered={false}>
           <div className={classes.cardContent}>
             {fromChain && isApeChain(fromChain.id) && isMobile ? (

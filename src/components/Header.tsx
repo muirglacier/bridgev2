@@ -8,7 +8,7 @@ import { setIsChainShow, setChainSource } from "../redux/transferSlice";
 import { useWeb3Context } from "../providers/Web3ContextProvider";
 import { Theme } from "../theme/theme";
 import Account from "./Account";
-import BridgeAwesomeLogo from "../images/bridge_logo.svg";
+import BridgeAwesomeLogo from "../images/bridge_logo_jelly.svg";
 
 import homeHistoryIcon from "../images/homehistory.svg";
 import lightHomeHistory from "../images/lightHomeHistory.svg";
@@ -524,7 +524,13 @@ export default function Header(): JSX.Element {
   return (
     <div className={classes.header}>
       <div className={classes.hleft}>
-        <div className={classes.mobileLogoWrapper}></div>
+        <div className={classes.mobileLogoWrapper}>
+          <img
+            src={BridgeAwesomeLogo}
+            style={{ height: 60 }}
+            alt="Awesome Bridge"
+          />
+        </div>
 
         {shouldShowViewTab && (
           <div className="tabBody">

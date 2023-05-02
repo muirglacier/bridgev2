@@ -46,7 +46,7 @@ const useStyles = createUseStyles<string, { isMobile: boolean }, Theme>(
     connectBtn: {
       marginLeft: 8,
       height: 44,
-      background: theme.primaryBrand,
+      background: theme.secondBackground,
       backdropFilter: "blur(20px)",
       border: "none",
       borderRadius: 12,
@@ -176,8 +176,8 @@ export const NiceInfos = () => {
   );
   https: return (
     <Dropdown overlay={menu} trigger={["click", "hover"]}>
-      <Button className={classes.addressBtn} type="ghost">
-        <Typography.Text>Resources</Typography.Text>
+      <Button className={classes.connectBtn} type="primary">
+        Resources
         <span className={classes.indicator}>▾</span>
       </Button>
     </Dropdown>
