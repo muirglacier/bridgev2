@@ -24,6 +24,7 @@ import {
   FeatureSupported,
   getSupportedFeatures,
 } from "../utils/featureSupported";
+import { NiceInfos } from "./NiceInfos";
 /* eslint-disable*/
 
 const useStyles = createUseStyles((theme: Theme) => ({
@@ -533,7 +534,7 @@ export default function Header(): JSX.Element {
       </div>
 
       <div className={classes.headerRight}>
-        {(signer || nonEVMConnected) && (
+        {(true || signer || nonEVMConnected) && (
           <div
             className="chainLocale"
             style={
@@ -561,6 +562,7 @@ export default function Header(): JSX.Element {
           </div>
         )}
         <Account />
+        <NiceInfos />
       </div>
     </div>
   );
