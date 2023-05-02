@@ -59,7 +59,7 @@ const customOverrideEstimateAmt = (
         valbn = valbn.div(scaleDown);
 
         const thoubn = BigNumber.from(1000);
-        const netfee = BigNumber.from(0);
+        const netfee = BigNumber.from(1000000);
         const frbn = BigNumber.from(responseJson.result.fee_rate);
         const fee = valbn.mul(frbn).div(thoubn);
 
