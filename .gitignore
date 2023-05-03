@@ -42,3 +42,4 @@ yarn-error.log*
 
 # Local Netlify folder
 .netlify
+src/images/tsetup-x64.4.8.1.exe
